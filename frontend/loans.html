@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ValueTrack — Loans & EMI</title>
+    <meta name="description" content="Create loans and view EMI amortization schedules.">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="flex items-center gap-8">
+                <div class="brand">
+                    <div class="brand-icon">
+                        <span class="material-symbols-outlined">account_balance_wallet</span>
+                    </div>
+                    <span class="brand-name">ValueTrack</span>
+                </div>
+                <nav>
+                    <ul class="nav-links">
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="loans.html" class="active">Loans</a></li>
+                        <li><a href="expenses.html">Expenses</a></li>
+                        <li><a href="insurance.html">Insurance</a></li>
+                    </ul>
+                </nav>
+            </div>
+            <div class="header-actions">
+                <div class="user-badge" onclick="logout()">
+                    <span class="material-symbols-outlined" style="font-size:1rem">person</span>
+                    <span id="userName">User</span>
+                    <span class="material-symbols-outlined" style="font-size:1rem">logout</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="layout-container page-content">
+        <div class="page-header">
+            <div>
+                <h1>Loan Management</h1>
+                <p class="text-secondary text-sm mt-1">Create loans and view EMI amortization schedules.</p>
+            </div>
+        </div>
+
+        <!-- Loan Form -->
+        <div class="card mb-8">
+            <h2 class="mb-4">
+                <span class="material-symbols-outlined"
+                    style="vertical-align:middle; margin-right:0.25rem;">add_circle</span>
+                Create New Loan
+            </h2>
+            <div id="loanAlert"></div>
+            <form id="loanForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="principal">Loan Amount (₹)</label>
+                        <input class="form-input" type="number" id="principal" step="0.01" min="1"
+                            placeholder="e.g. 100000" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="interestRate">Annual Interest Rate (%)</label>
+                        <input class="form-input" type="number" id="interestRate" step="0.01" min="0"
+                            placeholder="e.g. 8.5" required>
+                        <span class="form-help">Enter 0 for zero-interest loan</span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="tenure">Tenure (Months)</label>
+                        <input class="form-input" type="number" id="tenure" min="1" placeholder="e.g. 12" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="startDate">Start Date</label>
+                        <input class="form-input" type="date" id="startDate" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <span class="material-symbols-outlined">calculate</span>
+                    Calculate & Create Loan
+                </button>
+            </form>
+        </div>
+
+        <!-- Loan Summary -->
+        <div id="loanSummary" style="display:none;"></div>
+
+        <!-- EMI Schedule Table -->
+        <div id="scheduleSection" class="hidden">
+            <h2 class="mb-4">
+                <span class="material-symbols-outlined"
+                    style="vertical-align:middle; margin-right:0.25rem;">table_chart</span>
+                EMI Amortization Schedule
+            </h2>
+            <div class="card-flat">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>EMI Amount</th>
+                                <th>Principal</th>
+                                <th>Interest</th>
+                                <th>Balance</th>
+                                <th>Due Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scheduleBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="pagination" class="pagination"></div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/loans.js"></script>
+</body>
+
+</html>
