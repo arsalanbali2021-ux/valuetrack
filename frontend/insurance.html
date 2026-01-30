@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ValueTrack — Insurance</title>
+    <meta name="description" content="Find the best insurance plan for your needs with rule-based scoring.">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="flex items-center gap-8">
+                <div class="brand">
+                    <div class="brand-icon">
+                        <span class="material-symbols-outlined">account_balance_wallet</span>
+                    </div>
+                    <span class="brand-name">ValueTrack</span>
+                </div>
+                <nav>
+                    <ul class="nav-links">
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="loans.html">Loans</a></li>
+                        <li><a href="expenses.html">Expenses</a></li>
+                        <li><a href="insurance.html" class="active">Insurance</a></li>
+                    </ul>
+                </nav>
+            </div>
+            <div class="header-actions">
+                <div class="user-badge" onclick="logout()">
+                    <span class="material-symbols-outlined" style="font-size:1rem">person</span>
+                    <span id="userName">User</span>
+                    <span class="material-symbols-outlined" style="font-size:1rem">logout</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="layout-container page-content">
+        <div class="page-header">
+            <div>
+                <h1>Insurance Recommendations</h1>
+                <p class="text-secondary text-sm mt-1">Get scored, ranked insurance plan recommendations based on your
+                    profile.</p>
+            </div>
+        </div>
+
+        <!-- Eligibility Form -->
+        <div class="card mb-8">
+            <h2 class="mb-4">
+                <span class="material-symbols-outlined"
+                    style="vertical-align:middle; margin-right:0.25rem;">health_and_safety</span>
+                Enter Your Details
+            </h2>
+            <div id="insuranceAlert"></div>
+            <form id="insuranceForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="age">Your Age</label>
+                        <input class="form-input" type="number" id="age" min="1" max="120" placeholder="e.g. 26"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="budget">Annual Budget (₹)</label>
+                        <input class="form-input" type="number" id="budget" step="0.01" min="0" placeholder="e.g. 15000"
+                            required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label flex items-center gap-2" style="cursor:pointer;">
+                        <input type="checkbox" id="preExisting"
+                            style="width:1.125rem; height:1.125rem; accent-color:var(--color-primary);">
+                        I have a pre-existing medical condition
+                    </label>
+                    <span class="form-help">If checked, only plans supporting pre-existing conditions will score
+                        higher.</span>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <span class="material-symbols-outlined">search</span>
+                    Find Best Plans
+                </button>
+            </form>
+        </div>
+
+        <!-- Scoring Formula Info -->
+        <div class="alert alert-info mb-8">
+            <span class="material-symbols-outlined">info</span>
+            <div>
+                <strong>Scoring Formula:</strong>
+                AgeMatch (30%) + BudgetFit (40%) + Pre-existing Support (20%) + Coverage Bonus (10%).
+                Top 5 results are displayed.
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div id="resultsSection" class="hidden">
+            <h2 class="mb-4">
+                <span class="material-symbols-outlined"
+                    style="vertical-align:middle; margin-right:0.25rem;">leaderboard</span>
+                Top 5 Recommended Plans
+            </h2>
+            <div id="resultsList" class="flex flex-col gap-3"></div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/insurance.js"></script>
+</body>
+
+</html>
