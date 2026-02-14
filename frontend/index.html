@@ -8,79 +8,126 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div class="auth-container">
-        <div class="auth-card">
-            <!-- Brand -->
-            <div class="auth-brand">
-                <div class="brand-icon">
-                    <span class="material-symbols-outlined">account_balance_wallet</span>
+    <div class="auth-page">
+        <!-- Top Navigation -->
+        <header class="auth-header">
+            <div class="brand-group">
+                <span class="material-symbols-outlined brand-icon" style="font-size:1.75rem">account_balance_wallet</span>
+                <h2 class="brand-title">ValueTrack</h2>
+            </div>
+
+        </header>
+
+        <!-- Main Content -->
+        <main class="auth-main">
+            <div style="width:100%; max-width:480px;">
+                <!-- Login/Registration Card -->
+                <div class="auth-card">
+                    <!-- Hero Banner -->
+                    <div class="auth-hero">
+                        <div class="auth-hero-content">
+                            <span class="material-symbols-outlined">account_balance_wallet</span>
+                            <p>Smart Insurance & Wealth Protection</p>
+                        </div>
+                    </div>
+
+                    <div class="auth-body">
+                        <!-- Tab Switcher -->
+                        <div class="auth-tabs">
+                            <button class="auth-tab active" data-target="loginSection">Login</button>
+                            <button class="auth-tab" data-target="registerSection">Register</button>
+                        </div>
+
+                        <!-- Login Form -->
+                        <div id="loginSection" class="auth-form active">
+                            <div id="loginAlert"></div>
+                            <form id="loginForm" style="display:flex; flex-direction:column; gap:1.25rem;">
+                                <!-- Email -->
+                                <div>
+                                    <label class="form-label" for="loginEmail" style="text-transform:none; letter-spacing:normal; font-size:0.875rem; color:var(--color-text-secondary);">Email Address</label>
+                                    <div class="input-icon-wrap">
+                                        <span class="material-symbols-outlined icon-prefix">mail</span>
+                                        <input class="form-input" type="email" id="loginEmail"
+                                               placeholder="name@company.com" required>
+                                    </div>
+                                </div>
+                                <!-- Password -->
+                                <div>
+                                    <label class="form-label" for="loginPassword" style="text-transform:none; letter-spacing:normal; font-size:0.875rem; color:var(--color-text-secondary);">Password</label>
+                                    <div class="input-icon-wrap">
+                                        <span class="material-symbols-outlined icon-prefix">lock</span>
+                                        <input class="form-input" type="password" id="loginPassword"
+                                               placeholder="••••••••" required style="padding-right:2.5rem;">
+                                        <span class="material-symbols-outlined icon-suffix">visibility</span>
+                                    </div>
+                                </div>
+                                <!-- Remember me -->
+                                <div class="checkbox-row">
+                                    <input type="checkbox" id="rememberMe">
+                                    <label for="rememberMe">Remember me on this device</label>
+                                </div>
+                                <!-- Submit -->
+                                <button type="submit" class="btn btn-primary btn-full btn-lg" style="margin-top:0.25rem;">
+                                    Sign in to ValueTrack
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Register Form -->
+                        <div id="registerSection" class="auth-form">
+                            <div id="registerAlert"></div>
+                            <form id="registerForm" style="display:flex; flex-direction:column; gap:1.25rem;">
+                                <!-- Name -->
+                                <div>
+                                    <label class="form-label" for="registerName" style="text-transform:none; letter-spacing:normal; font-size:0.875rem; color:var(--color-text-secondary);">Full Name</label>
+                                    <div class="input-icon-wrap">
+                                        <span class="material-symbols-outlined icon-prefix">person</span>
+                                        <input class="form-input" type="text" id="registerName"
+                                               placeholder="Alice Johnson" required>
+                                    </div>
+                                </div>
+                                <!-- Email -->
+                                <div>
+                                    <label class="form-label" for="registerEmail" style="text-transform:none; letter-spacing:normal; font-size:0.875rem; color:var(--color-text-secondary);">Email Address</label>
+                                    <div class="input-icon-wrap">
+                                        <span class="material-symbols-outlined icon-prefix">mail</span>
+                                        <input class="form-input" type="email" id="registerEmail"
+                                               placeholder="name@company.com" required>
+                                    </div>
+                                </div>
+                                <!-- Password -->
+                                <div>
+                                    <label class="form-label" for="registerPassword" style="text-transform:none; letter-spacing:normal; font-size:0.875rem; color:var(--color-text-secondary);">Password</label>
+                                    <div class="input-icon-wrap" style="margin-bottom:0.25rem;">
+                                        <span class="material-symbols-outlined icon-prefix">lock</span>
+                                        <input class="form-input" type="password" id="registerPassword"
+                                               placeholder="Min 6 characters" required minlength="6">
+                                    </div>
+                                    <p style="font-size:0.75rem; color:var(--color-text-muted); margin:0;">Must be at least 6 characters long.</p>
+                                </div>
+                                <!-- Confirm -->
+                                <div>
+                                    <label class="form-label" for="registerConfirm" style="text-transform:none; letter-spacing:normal; font-size:0.875rem; color:var(--color-text-secondary);">Confirm Password</label>
+                                    <div class="input-icon-wrap">
+                                        <span class="material-symbols-outlined icon-prefix">lock</span>
+                                        <input class="form-input" type="password" id="registerConfirm"
+                                               placeholder="Re-enter password" required>
+                                    </div>
+                                </div>
+                                <!-- Submit -->
+                                <button type="submit" class="btn btn-primary btn-full btn-lg">
+                                    Create Account
+                                </button>
+                            </form>
+                        </div>
+
+
+                    </div>
                 </div>
-                <h1>ValueTrack</h1>
-                <p>Smart Financial & Insurance Management</p>
             </div>
+        </main>
 
-            <!-- Tabs -->
-            <div class="auth-tabs">
-                <button class="auth-tab active" data-target="loginSection">Login</button>
-                <button class="auth-tab" data-target="registerSection">Register</button>
-            </div>
 
-            <!-- Login Form -->
-            <div id="loginSection" class="auth-form active">
-                <div id="loginAlert"></div>
-                <form id="loginForm">
-                    <div class="form-group">
-                        <label class="form-label" for="loginEmail">Email</label>
-                        <input class="form-input" type="email" id="loginEmail"
-                               placeholder="you@example.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="loginPassword">Password</label>
-                        <input class="form-input" type="password" id="loginPassword"
-                               placeholder="Enter your password" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-full btn-lg">
-                        <span class="material-symbols-outlined">login</span>
-                        Sign In
-                    </button>
-                </form>
-            </div>
-
-            <!-- Register Form -->
-            <div id="registerSection" class="auth-form">
-                <div id="registerAlert"></div>
-                <form id="registerForm">
-                    <div class="form-group">
-                        <label class="form-label" for="registerName">Full Name</label>
-                        <input class="form-input" type="text" id="registerName"
-                               placeholder="Alice Johnson" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="registerEmail">Email</label>
-                        <input class="form-input" type="email" id="registerEmail"
-                               placeholder="you@example.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="registerPassword">Password</label>
-                        <input class="form-input" type="password" id="registerPassword"
-                               placeholder="Min 6 characters" required minlength="6">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="registerConfirm">Confirm Password</label>
-                        <input class="form-input" type="password" id="registerConfirm"
-                               placeholder="Re-enter password" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-full btn-lg">
-                        <span class="material-symbols-outlined">person_add</span>
-                        Create Account
-                    </button>
-                </form>
-            </div>
-
-            <p style="text-align:center; margin-top:1.5rem; font-size:0.75rem; color:var(--color-text-muted);">
-                Academic Project — B.Tech Mini Project
-            </p>
-        </div>
     </div>
 
     <script src="js/api.js"></script>

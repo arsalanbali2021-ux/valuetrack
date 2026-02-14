@@ -4,10 +4,10 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // If already logged in, redirect to dashboard
+    // If already logged in, redirect based on role
     const user = getUser();
     if (user) {
-        window.location.href = 'dashboard.html';
+        window.location.href = user.role === 'admin' ? 'admin.html' : 'dashboard.html';
         return;
     }
 
@@ -46,7 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Store user info
             localStorage.setItem('valuetrack_user', JSON.stringify(result));
             showAlert(loginAlert, 'Login successful! Redirecting...', 'success');
-            setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
+            const redirectUrl = result.role === 'admin' ? 'admin.html' : 'dashboard.html';
+            setTimeout(() => { window.location.href = redirectUrl; }, 500);
         } catch (error) {
             showAlert(loginAlert, error.message, 'danger');
         } finally {

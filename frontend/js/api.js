@@ -31,7 +31,11 @@ async function apiCall(endpoint, options = {}) {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || `HTTP ${response.status}`);
+            throw new Error(data.message || data.error || `HTTP ${response.status}`);
+        }
+
+        if (data && data.status === 'success' && data.data !== undefined) {
+            return data.data;
         }
 
         return data;
@@ -55,6 +59,12 @@ const AuthAPI = {
         apiCall('/auth/login', {
             method: 'POST',
             body: JSON.stringify({ email, password })
+        }),
+
+    setBudget: (userId, budget) =>
+        apiCall('/auth/budget', {
+            method: 'PUT',
+            body: JSON.stringify({ user_id: userId, monthly_budget: budget })
         })
 };
 
@@ -78,7 +88,7 @@ const LoansAPI = {
 
 // ---- Expenses API ----
 const ExpensesAPI = {
-    create: (userId, category, amount, expenseDate, description) =>
+    create: (userId, category, amount, expenseDate, description, isFixed = false) =>
         apiCall('/expenses', {
             method: 'POST',
             body: JSON.stringify({
@@ -86,20 +96,10 @@ const ExpensesAPI = {
                 category,
                 amount,
                 expense_date: expenseDate,
-                description
+                description,
+                is_fixed: isFixed
             })
         }),
-
-    import: (userId, file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('user_id', userId);
-
-        return apiCall('/expenses/import', {
-            method: 'POST',
-            body: formData
-        });
-    },
 
     list: (userId, month, year) => {
         let params = `user_id=${userId}`;
@@ -111,14 +111,16 @@ const ExpensesAPI = {
 
 // ---- Insurance API ----
 const InsuranceAPI = {
-    request: (userId, age, preExisting, annualBudget) =>
+    getRecommendation: (userId, age, monthlyBudget, needsCriticalIllness, needsMaternity, needsAccident) =>
         apiCall('/insurance/request', {
             method: 'POST',
             body: JSON.stringify({
                 user_id: userId,
-                age,
-                pre_existing_condition: preExisting,
-                annual_budget: annualBudget
+                age: age,
+                monthly_budget: monthlyBudget,
+                needs_critical_illness: needsCriticalIllness,
+                needs_maternity: needsMaternity,
+                needs_accident: needsAccident
             })
         }),
 
@@ -131,6 +133,71 @@ const DashboardAPI = {
     get: (userId) =>
         apiCall(`/dashboard?user_id=${userId}`)
 };
+
+// ---- Admin API ----
+const AdminAPI = {
+    // Insurance CRUD
+    getInsurance: (userId) =>
+        apiCall(`/admin/insurance?user_id=${userId}`),
+
+    createInsurance: (data, userId) =>
+        apiCall(`/admin/insurance?user_id=${userId}`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    updateInsurance: (planId, data, userId) =>
+        apiCall(`/admin/insurance/${planId}?user_id=${userId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+
+    deleteInsurance: (planId, userId) =>
+        apiCall(`/admin/insurance/${planId}?user_id=${userId}`, {
+            method: 'DELETE'
+        }),
+
+    // Settings
+    getSettings: (userId) =>
+        apiCall(`/admin/settings?user_id=${userId}`),
+
+    updateSettings: (settings, userId) =>
+        apiCall(`/admin/settings?user_id=${userId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ settings, user_id: userId })
+        }),
+
+    // Categories
+    getCategories: (userId) =>
+        apiCall(`/admin/categories?user_id=${userId}`),
+
+    createCategory: (data, userId) =>
+        apiCall(`/admin/categories?user_id=${userId}`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    updateCategory: (catId, data, userId) =>
+        apiCall(`/admin/categories/${catId}?user_id=${userId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+
+    deleteCategory: (catId, userId) =>
+        apiCall(`/admin/categories/${catId}?user_id=${userId}`, {
+            method: 'DELETE'
+        }),
+
+    // Users
+    getUsers: (userId) =>
+        apiCall(`/admin/users?user_id=${userId}`)
+};
+
+// ---- Utility: check admin role ----
+function isAdmin() {
+    const user = getUser();
+    return user && user.role === 'admin';
+}
 
 // ---- Utility: show/hide loading ----
 function showLoading(btn) {
