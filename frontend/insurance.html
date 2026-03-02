@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,106 +7,173 @@
     <meta name="description" content="Find the best insurance plan for your needs with rule-based scoring.">
     <link rel="stylesheet" href="css/styles.css">
 </head>
-
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-inner">
-            <div class="flex items-center gap-8">
-                <div class="brand">
-                    <div class="brand-icon">
-                        <span class="material-symbols-outlined">account_balance_wallet</span>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-icon">
+                    <span class="material-symbols-outlined">shield_with_heart</span>
+                </div>
+                <div>
+                    <div class="sidebar-brand-title">ValueTrack</div>
+                    <div class="sidebar-brand-sub">Wealth Management</div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="loans.html">
+                    <span class="material-symbols-outlined">payments</span>
+                    <span>Loans & EMI</span>
+                </a>
+                <a href="expenses.html">
+                    <span class="material-symbols-outlined">receipt_long</span>
+                    <span>Expenses</span>
+                </a>
+                <a href="insurance.html" class="active">
+                    <span class="material-symbols-outlined fill-icon">verified_user</span>
+                    <span>Insurance</span>
+                </a>
+                <a href="admin.html" class="admin-link" id="adminLink" style="display:none;">
+                    <span class="material-symbols-outlined">admin_panel_settings</span>
+                    <span>Admin Panel</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="sidebar-user" onclick="logout()" style="cursor:pointer;" title="Click to logout">
+                    <div class="sidebar-user-avatar">
+                        <span class="material-symbols-outlined" style="font-size:1.25rem;">person</span>
                     </div>
-                    <span class="brand-name">ValueTrack</span>
-                </div>
-                <nav>
-                    <ul class="nav-links">
-                        <li><a href="dashboard.html">Dashboard</a></li>
-                        <li><a href="loans.html">Loans</a></li>
-                        <li><a href="expenses.html">Expenses</a></li>
-                        <li><a href="insurance.html" class="active">Insurance</a></li>
-                    </ul>
-                </nav>
-            </div>
-            <div class="header-actions">
-                <div class="user-badge" onclick="logout()">
-                    <span class="material-symbols-outlined" style="font-size:1rem">person</span>
-                    <span id="userName">User</span>
-                    <span class="material-symbols-outlined" style="font-size:1rem">logout</span>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <main class="layout-container page-content">
-        <div class="page-header">
-            <div>
-                <h1>Insurance Recommendations</h1>
-                <p class="text-secondary text-sm mt-1">Get scored, ranked insurance plan recommendations based on your
-                    profile.</p>
-            </div>
-        </div>
-
-        <!-- Eligibility Form -->
-        <div class="card mb-8">
-            <h2 class="mb-4">
-                <span class="material-symbols-outlined"
-                    style="vertical-align:middle; margin-right:0.25rem;">health_and_safety</span>
-                Enter Your Details
-            </h2>
-            <div id="insuranceAlert"></div>
-            <form id="insuranceForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label" for="age">Your Age</label>
-                        <input class="form-input" type="number" id="age" min="1" max="120" placeholder="e.g. 26"
-                            required>
+                    <div style="flex:1; min-width:0;">
+                        <div class="sidebar-user-name" id="userName">User</div>
+                        <div class="sidebar-user-role">ValueTrack User</div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="budget">Annual Budget (₹)</label>
-                        <input class="form-input" type="number" id="budget" step="0.01" min="0" placeholder="e.g. 15000"
-                            required>
-                    </div>
+                    <span class="material-symbols-outlined" style="font-size:1.125rem; color:var(--color-text-muted);">logout</span>
                 </div>
-                <div class="form-group">
-                    <label class="form-label flex items-center gap-2" style="cursor:pointer;">
-                        <input type="checkbox" id="preExisting"
-                            style="width:1.125rem; height:1.125rem; accent-color:var(--color-primary);">
-                        I have a pre-existing medical condition
-                    </label>
-                    <span class="form-help">If checked, only plans supporting pre-existing conditions will score
-                        higher.</span>
-                </div>
-                <button type="submit" class="btn btn-primary btn-lg">
-                    <span class="material-symbols-outlined">search</span>
-                    Find Best Plans
-                </button>
-            </form>
-        </div>
-
-        <!-- Scoring Formula Info -->
-        <div class="alert alert-info mb-8">
-            <span class="material-symbols-outlined">info</span>
-            <div>
-                <strong>Scoring Formula:</strong>
-                AgeMatch (30%) + BudgetFit (40%) + Pre-existing Support (20%) + Coverage Bonus (10%).
-                Top 5 results are displayed.
             </div>
-        </div>
+        </aside>
 
-        <!-- Results -->
-        <div id="resultsSection" class="hidden">
-            <h2 class="mb-4">
-                <span class="material-symbols-outlined"
-                    style="vertical-align:middle; margin-right:0.25rem;">leaderboard</span>
-                Top 5 Recommended Plans
-            </h2>
-            <div id="resultsList" class="flex flex-col gap-3"></div>
-        </div>
-    </main>
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <h2 class="top-header-title">Insurance</h2>
+                <div class="top-header-actions">
+                </div>
+            </header>
+
+            <!-- Scrollable Content -->
+            <div class="content-area">
+                <div class="content-inner" style="display:flex; flex-direction:column; gap:2rem;">
+
+                    <!-- Page Header -->
+                    <div class="mb-4">
+                        <h1 style="font-size:1.875rem; font-weight:700;">Insurance Recommendations</h1>
+                        <p class="text-muted mt-1">Personalized coverage plans optimized for your financial profile and health history.</p>
+                    </div>
+
+                    <!-- Two Column Layout -->
+                    <div style="display:grid; grid-template-columns:1fr 2fr; gap:2rem;">
+                        <!-- Left: Eligibility Form -->
+                        <div style="display:flex; flex-direction:column; gap:1.5rem;">
+                            <div class="card">
+                                <h3 class="mb-6 flex items-center gap-2" style="font-size:1.125rem;">
+                                    <span class="material-symbols-outlined text-primary">analytics</span>
+                                    Eligibility Profile
+                                </h3>
+                                <div id="insuranceAlert"></div>
+                                <form id="insuranceForm" style="display:flex; flex-direction:column; gap:1.5rem;">
+                                    <div>
+                                        <label class="form-label" for="age">Current Age</label>
+                                        <input class="form-input" type="number" id="age" min="1" max="120"
+                                            placeholder="e.g. 26" required>
+                                    </div>
+                                    <div>
+                                        <label class="form-label" for="budget">Monthly Insurance Budget</label>
+                                        <div class="input-icon-wrap">
+                                            <span class="icon-prefix-text" style="font-size:0.875rem;">₹</span>
+                                            <input class="form-input" type="number" id="budget" step="0.01" min="0"
+                                                placeholder="e.g. 1500" required>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; flex-direction:column; gap:1rem; margin-top:0.5rem;">
+                                        <span class="form-label" style="margin-bottom:0;">Coverage Needs</span>
+                                        <div class="toggle-wrap" style="padding:0.75rem 1rem; margin:0;">
+                                            <div>
+                                                <span style="font-size:0.875rem; font-weight:600;">Critical Illness</span>
+                                            </div>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" id="needsCriticalIllness">
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="toggle-wrap" style="padding:0.75rem 1rem; margin:0;">
+                                            <div>
+                                                <span style="font-size:0.875rem; font-weight:600;">Maternity Cover</span>
+                                            </div>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" id="needsMaternity">
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="toggle-wrap" style="padding:0.75rem 1rem; margin:0;">
+                                            <div>
+                                                <span style="font-size:0.875rem; font-weight:600;">Accident Cover</span>
+                                            </div>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" id="needsAccident">
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-secondary btn-full" style="margin-top:0.5rem;">
+                                        Find Best Plans
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Insight Card -->
+                            <div class="insight-card">
+                                <h4>ValueTrack Insight</h4>
+                                <p>Based on your profile, we recommend reviewing plans with comprehensive coverage including hospitalization and critical illness protection.</p>
+                            </div>
+
+                            <!-- Scoring Info -->
+                            <div class="alert alert-info">
+                                <span class="material-symbols-outlined">info</span>
+                                <div>
+                                    <strong>Recommendation Engine:</strong> Matches age bounds, ensures premium fits budget, and provides bonuses for matching requested coverage types.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Results -->
+                        <div>
+                            <div id="resultsSection" class="hidden" style="display:flex; flex-direction:column; gap:1.5rem;">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-sm text-muted">Showing matched plans for you</p>
+                                </div>
+                                <div id="resultsList" class="flex flex-col gap-3"></div>
+                            </div>
+
+                            <!-- Empty State (before search) -->
+                            <div id="emptyResults" class="card" style="text-align:center; padding:4rem 2rem;">
+                                <span class="material-symbols-outlined" style="font-size:4rem; color:var(--color-text-muted); opacity:0.5;">verified_user</span>
+                                <h3 style="color:var(--color-text-secondary); margin-top:1rem;">No Results Yet</h3>
+                                <p class="text-sm text-muted" style="margin-top:0.5rem;">Enter your profile details and click "Find Best Plans" to see personalized recommendations.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
 
     <script src="js/api.js"></script>
     <script src="js/insurance.js"></script>
 </body>
-
 </html>

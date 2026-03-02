@@ -1,131 +1,112 @@
 """
-ValueTrack — Insurance Scoring Service
-Rule-based insurance plan scorer. No ML.
-
-Scoring Components (weights):
-  AgeMatch          (0.30) — 1 if min_age <= age <= max_age, else 0
-  BudgetFit         (0.40) — 1 if premium <= budget, else max(0, 1 - (premium-budget)/budget)
-  PreExistingSupport(0.20) — 1 if no condition OR policy allows it, else 0
-  CoverageBonus     (0.10) — coverage / max_coverage across all policies
-
-Composite: score = AgeMatch*0.30 + BudgetFit*0.40 + PreExistingSupport*0.20 + CoverageBonus*0.10
-Top 5 results stored in insurance_result with rank_position 1..5.
+ValueTrack — Insurance Recommendations Service
+Scoring logic to match user profile against available insurance plans using new schema.
 """
-from decimal import Decimal
 from models import Insurance, InsuranceRequest, InsuranceResult
 from db import db_session
 from sqlalchemy import func as sql_func
 
+def _calculate_score(policy: Insurance, age: int, 
+                     needs_critical_illness: bool,
+                     needs_maternity: bool,
+                     needs_accident: bool,
+                     monthly_budget: float, 
+                     max_coverage: float = 1.0) -> tuple:
+    """Calculate composite score and generate explanations for a single policy."""
+    explanations = []
 
-def _calculate_score(policy, age: int, pre_existing: bool,
-                     annual_budget: float, max_coverage: float) -> float:
-    """Calculate composite score for a single policy."""
+    # Hard Filter 1: Age
+    if not (policy.min_age <= age <= policy.max_age):
+        return 0.0, []
 
-    # AgeMatch
-    age_match = 1.0 if policy.min_age <= age <= policy.max_age else 0.0
+    # Hard Filter 2: Budget
+    premium = float(policy.monthly_premium)
+    if premium > monthly_budget:
+         return 0.0, []
 
-    # BudgetFit
-    premium = float(policy.premium)
-    if annual_budget <= 0:
-        budget_fit = 0.0
-    elif premium <= annual_budget:
-        budget_fit = 1.0
-    else:
-        budget_fit = max(0.0, 1.0 - (premium - annual_budget) / annual_budget)
+    explanations.append({'icon': 'check_circle', 'text': f'Age {policy.min_age}-{policy.max_age} limit met'})
+    explanations.append({'icon': 'payments', 'text': f'Under budget: ₹{premium}/mo'})
 
-    # PreExistingSupport
-    if not pre_existing:
-        pre_existing_support = 1.0
-    else:
-        pre_existing_support = 1.0 if policy.pre_existing_allowed else 0.0
+    score = 0.5
 
-    # CoverageBonus
+    # Scoring Criteria: Critical Illness
+    if needs_critical_illness:
+        if policy.has_critical_illness:
+            score += 0.15
+            explanations.append({'icon': 'health_and_safety', 'text': 'Critical Illness Covered'})
+        else:
+            explanations.append({'icon': 'error', 'text': 'NO Critical Illness Cover'})
+    elif policy.has_critical_illness:
+        explanations.append({'icon': 'info', 'text': 'Bonus: Critical Illness Covered'})
+
+    # Scoring Criteria: Maternity
+    if needs_maternity:
+        if policy.has_maternity:
+            score += 0.15
+            explanations.append({'icon': 'pregnant_woman', 'text': 'Maternity Covered'})
+        else:
+            explanations.append({'icon': 'error', 'text': 'NO Maternity Cover'})
+            
+    # Scoring Criteria: Accident
+    if needs_accident:
+        if policy.has_accident:
+            score += 0.10
+            explanations.append({'icon': 'personal_injury', 'text': 'Accident Covered'})
+        else:
+             explanations.append({'icon': 'error', 'text': 'NO Accident Cover'})
+
+    # Coverage Bonus
     coverage = float(policy.coverage_amount)
-    coverage_bonus = coverage / max_coverage if max_coverage > 0 else 0.0
+    coverage_bonus = (coverage / max_coverage) if max_coverage > 0 else 0.0
+    score += (coverage_bonus * 0.10)
 
-    # Composite score
-    score = (
-        age_match * 0.30 +
-        budget_fit * 0.40 +
-        pre_existing_support * 0.20 +
-        coverage_bonus * 0.10
-    )
-
-    return round(score, 4)
+    return round(score, 4), explanations
 
 
-def score_insurance(user_id: int, age: int, pre_existing_condition: bool,
-                    annual_budget: float) -> dict:
-    """
-    Score all insurance policies for the given user profile.
-    Persists top 5 results in insurance_result.
-
-    Returns:
-        {
-            "request_id": int,
-            "top": [{"insurance_id": int, "score": float, "rank": int,
-                      "provider": str, "plan_name": str, "premium": float,
-                      "coverage": float}, ...]
-        }
-    """
-    # Validate
+def score_insurance(user_id: int, age: int, needs_critical_illness: bool,
+                    needs_maternity: bool, needs_accident: bool,
+                    monthly_budget: float) -> dict:
+    """Score all insurance policies and persist top 5 results."""
     if age <= 0 or age > 120:
         raise ValueError("Age must be between 1 and 120")
-    if annual_budget < 0:
-        raise ValueError("Annual budget cannot be negative")
+    if monthly_budget < 0:
+        raise ValueError("Budget cannot be negative")
 
-    # Create request record
     request = InsuranceRequest(
         user_id=user_id,
         age=age,
-        pre_existing_condition=1 if pre_existing_condition else 0,
-        annual_budget=annual_budget
+        needs_critical_illness=1 if needs_critical_illness else 0,
+        needs_maternity=1 if needs_maternity else 0,
+        needs_accident=1 if needs_accident else 0,
+        monthly_budget=monthly_budget
     )
     db_session.add(request)
     db_session.flush()
 
-    # Fetch all policies
     policies = db_session.query(Insurance).all()
     if not policies:
         db_session.commit()
-        return {
-            'request_id': request.request_id,
-            'top': [],
-            'reason': 'no policies in database'
-        }
+        return {'request_id': request.request_id, 'top': [], 'reason': 'no policies in database'}
 
-    # Get max coverage for normalization
-    max_coverage = float(
-        db_session.query(sql_func.max(Insurance.coverage_amount)).scalar() or 0
-    )
+    max_coverage = float(db_session.query(sql_func.max(Insurance.coverage_amount)).scalar() or 0)
 
-    # Score each policy
     scored = []
     for policy in policies:
-        score = _calculate_score(policy, age, pre_existing_condition,
-                                 annual_budget, max_coverage)
-        scored.append((policy, score))
+        score, explanations = _calculate_score(policy, age, needs_critical_illness,
+                                               needs_maternity, needs_accident,
+                                               monthly_budget, max_coverage)
+        scored.append((policy, score, explanations))
 
-    # Sort descending by score
     scored.sort(key=lambda x: x[1], reverse=True)
-
-    # Filter out zero-score policies
-    scored = [(p, s) for p, s in scored if s > 0]
+    scored = [(p, s, e) for p, s, e in scored if s > 0]
 
     if not scored:
         db_session.commit()
-        return {
-            'request_id': request.request_id,
-            'top': [],
-            'reason': 'no eligible plans'
-        }
+        return {'request_id': request.request_id, 'top': [], 'reason': 'no eligible plans fit your criteria'}
 
-    # Take top 5
     top5 = scored[:5]
-
-    # Persist results
     results = []
-    for rank, (policy, score) in enumerate(top5, start=1):
+    for rank, (policy, score, explanations) in enumerate(top5, start=1):
         result = InsuranceResult(
             request_id=request.request_id,
             insurance_id=policy.insurance_id,
@@ -137,49 +118,54 @@ def score_insurance(user_id: int, age: int, pre_existing_condition: bool,
             'insurance_id': policy.insurance_id,
             'score': score,
             'rank': rank,
-            'provider': policy.provider_name,
+            'type': policy.plan_type,
             'plan_name': policy.plan_name,
-            'premium': float(policy.premium),
-            'coverage': float(policy.coverage_amount)
+            'premium': float(policy.monthly_premium),
+            'coverage': float(policy.coverage_amount),
+            'co_pay': policy.co_pay_percentage,
+            'has_maternity': bool(policy.has_maternity),
+            'has_critical_illness': bool(policy.has_critical_illness),
+            'has_accident': bool(policy.has_accident),
+            'min_age': policy.min_age,
+            'max_age': policy.max_age,
+            'explanations': explanations
         })
 
     db_session.commit()
-
-    return {
-        'request_id': request.request_id,
-        'top': results
-    }
-
+    return {'request_id': request.request_id, 'top': results}
 
 def get_results(request_id: int) -> dict:
-    """Fetch persisted insurance ranking for a given request."""
-    request = db_session.query(InsuranceRequest).filter(
-        InsuranceRequest.request_id == request_id
-    ).first()
+    """Fetch persisted insurance ranking."""
+    request = db_session.query(InsuranceRequest).filter(InsuranceRequest.request_id == request_id).first()
+    if not request: raise ValueError("Request not found")
 
-    if not request:
-        raise ValueError("Request not found")
-
-    results = db_session.query(InsuranceResult).filter(
-        InsuranceResult.request_id == request_id
-    ).order_by(InsuranceResult.rank_position).all()
+    results = db_session.query(InsuranceResult).filter(InsuranceResult.request_id == request_id).order_by(InsuranceResult.rank_position).all()
+    max_coverage = float(db_session.query(sql_func.max(Insurance.coverage_amount)).scalar() or 0)
 
     top = []
     for r in results:
-        policy = db_session.query(Insurance).filter(
-            Insurance.insurance_id == r.insurance_id
-        ).first()
+        policy = db_session.query(Insurance).filter(Insurance.insurance_id == r.insurance_id).first()
+        explanations = []
+        if policy:
+            _, explanations = _calculate_score(policy, request.age, bool(request.needs_critical_illness),
+                                               bool(request.needs_maternity), bool(request.needs_accident),
+                                               float(request.monthly_budget), max_coverage)
+
         top.append({
             'insurance_id': r.insurance_id,
             'score': float(r.rank_score),
             'rank': r.rank_position,
-            'provider': policy.provider_name if policy else 'Unknown',
+            'type': policy.plan_type if policy else 'Unknown',
             'plan_name': policy.plan_name if policy else 'Unknown',
-            'premium': float(policy.premium) if policy else 0,
-            'coverage': float(policy.coverage_amount) if policy else 0
+            'premium': float(policy.monthly_premium) if policy else 0,
+            'coverage': float(policy.coverage_amount) if policy else 0,
+            'co_pay': policy.co_pay_percentage if policy else 0,
+            'has_maternity': bool(policy.has_maternity) if policy else False,
+            'has_critical_illness': bool(policy.has_critical_illness) if policy else False,
+            'has_accident': bool(policy.has_accident) if policy else False,
+            'min_age': policy.min_age if policy else 0,
+            'max_age': policy.max_age if policy else 0,
+            'explanations': explanations
         })
 
-    return {
-        'request_id': request_id,
-        'top': top
-    }
+    return {'request_id': request_id, 'top': top}

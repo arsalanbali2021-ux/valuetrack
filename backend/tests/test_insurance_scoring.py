@@ -36,12 +36,12 @@ def test_score_pre_existing_condition():
 
     # Policy does NOT allow pre-existing
     policy_no = _make_policy(pre_existing_allowed=0)
-    score_no = _calculate_score(policy_no, age=30, pre_existing=True,
+    score_no, _ = _calculate_score(policy_no, age=30, pre_existing=True,
                                  annual_budget=15000, max_coverage=500000)
 
     # Policy DOES allow pre-existing
     policy_yes = _make_policy(pre_existing_allowed=1)
-    score_yes = _calculate_score(policy_yes, age=30, pre_existing=True,
+    score_yes, _ = _calculate_score(policy_yes, age=30, pre_existing=True,
                                   annual_budget=15000, max_coverage=500000)
 
     # The one that allows should score higher (by 0.20 weight)
@@ -49,9 +49,9 @@ def test_score_pre_existing_condition():
         f"Policy with pre-existing support ({score_yes}) should score higher than without ({score_no})"
 
     # When user has NO pre-existing, both should get full PreExistingSupport
-    score_no_cond = _calculate_score(policy_no, age=30, pre_existing=False,
+    score_no_cond, _ = _calculate_score(policy_no, age=30, pre_existing=False,
                                       annual_budget=15000, max_coverage=500000)
-    score_yes_cond = _calculate_score(policy_yes, age=30, pre_existing=False,
+    score_yes_cond, _ = _calculate_score(policy_yes, age=30, pre_existing=False,
                                        annual_budget=15000, max_coverage=500000)
     assert score_no_cond == score_yes_cond, \
         "Without pre-existing condition, both policies should score equally on that component"
@@ -68,7 +68,7 @@ def test_tiny_budget():
 
     # Premium 20000 but budget only 5000
     policy = _make_policy(premium=20000, coverage=500000)
-    score = _calculate_score(policy, age=30, pre_existing=False,
+    score, _ = _calculate_score(policy, age=30, pre_existing=False,
                               annual_budget=5000, max_coverage=500000)
 
     # BudgetFit = max(0, 1 - (20000-5000)/5000) = max(0, 1-3) = 0
@@ -79,7 +79,7 @@ def test_tiny_budget():
         f"Score {score} should be close to {expected} for tiny budget"
 
     # Zero budget
-    score_zero = _calculate_score(policy, age=30, pre_existing=False,
+    score_zero, _ = _calculate_score(policy, age=30, pre_existing=False,
                                    annual_budget=0, max_coverage=500000)
     # BudgetFit = 0 (special case for zero budget)
     expected_zero = 0.30 + 0.0 + 0.20 + 0.10  # = 0.60
@@ -98,7 +98,7 @@ def test_age_out_of_range():
 
     # Policy for 18-35 but user is 50
     policy = _make_policy(min_age=18, max_age=35, premium=5000, coverage=300000)
-    score = _calculate_score(policy, age=50, pre_existing=False,
+    score, _ = _calculate_score(policy, age=50, pre_existing=False,
                               annual_budget=15000, max_coverage=500000)
 
     # AgeMatch = 0
@@ -109,7 +109,7 @@ def test_age_out_of_range():
     assert score < 0.70, f"Out-of-range age should reduce score, got {score}"
 
     # Within range
-    score_in = _calculate_score(policy, age=25, pre_existing=False,
+    score_in, _ = _calculate_score(policy, age=25, pre_existing=False,
                                  annual_budget=15000, max_coverage=500000)
     assert score_in > score, \
         f"In-range ({score_in}) should score higher than out-of-range ({score})"
@@ -133,7 +133,7 @@ def test_score_ordering():
 
     scored = []
     for p in policies:
-        s = _calculate_score(p, age=30, pre_existing=True,
+        s, _ = _calculate_score(p, age=30, pre_existing=True,
                               annual_budget=10000, max_coverage=max_cov)
         scored.append((p.insurance_id, s))
 

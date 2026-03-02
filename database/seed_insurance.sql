@@ -1,7 +1,4 @@
--- ============================================================
--- ValueTrack — Seed: 15 Realistic Insurance Policies
--- Run AFTER schema.sql:  mysql -u root -p valuetrack < seed_insurance.sql
--- ============================================================
+-- Seed: 30 Insurance Plans (run after schema.sql)
 
 USE valuetrack;
 
@@ -22,4 +19,19 @@ VALUES
   ('New India Assurance','Senior Mediclaim',       60, 80, 20000.00, 500000.00,  1, 7000.00),
   ('Tata AIG',           'Medicare',               18, 65, 8000.00,  400000.00,  0, 4500.00),
   ('Tata AIG',           'Medicare Premier',       20, 55, 14000.00, 1000000.00, 1, 8000.00),
-  ('Niva Bupa',          'ReAssure 2.0',           18, 65, 9000.00,  500000.00,  1, 5500.00);
+  ('Niva Bupa',          'ReAssure 2.0',           18, 65, 9000.00,  500000.00,  1, 5500.00),
+  ('Care Health Insurance',         'Care Supreme',            18, 65, 11500.00, 1000000.00, 1, 6000.00),
+  ('Care Health Insurance',         'Care Advantage',          18, 70, 9200.00,  500000.00,  1, 5000.00),
+  ('Aditya Birla Health Insurance', 'Activ Health Platinum',   18, 65, 13000.00, 1000000.00, 1, 7000.00),
+  ('Aditya Birla Health Insurance', 'Activ Assure Diamond',    18, 60, 9800.00,  750000.00,  1, 6000.00),
+  ('SBI General Insurance',         'Arogya Supreme',          18, 65, 10500.00, 1000000.00, 1, 6500.00),
+  ('SBI General Insurance',         'Arogya Plus',             18, 60, 7200.00,  500000.00,  1, 5000.00),
+  ('Reliance General Insurance',    'Health Infinity',         18, 65, 8700.00,  500000.00,  1, 5000.00),
+  ('Reliance General Insurance',    'Health Gain',             18, 60, 6500.00,  400000.00,  0, 4000.00),
+  ('Future Generali',               'Health Total',            18, 65, 9900.00,  750000.00,  1, 6000.00),
+  ('Future Generali',               'Health Absolute',         18, 60, 8000.00,  500000.00,  1, 5000.00),
+  ('Cholamandalam MS',              'Healthline Insurance',    18, 65, 7800.00,  500000.00,  1, 4500.00),
+  ('Cholamandalam MS',              'Family Healthline',       18, 65, 8600.00,  750000.00,  1, 5000.00),
+  ('Kotak General Insurance',       'Kotak Health Premier',    18, 65, 10200.00, 1000000.00, 1, 6000.00),
+  ('Kotak General Insurance',       'Kotak Health Care',       18, 60, 7900.00,  500000.00,  1, 5000.00),
+  ('Royal Sundaram',                'Lifeline Elite',          18, 65, 11200.00, 1000000.00, 1, 6500.00);
