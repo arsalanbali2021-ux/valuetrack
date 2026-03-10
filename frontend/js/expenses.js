@@ -1,6 +1,6 @@
 /**
  * ValueTrack — Expenses Page Logic
- * Manual add, file import, and expense listing.
+ * Manual add and expense listing.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -9,6 +9,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const userNameEl = document.getElementById('userName');
     if (userNameEl) userNameEl.textContent = user.name;
+
+    // Show admin link if admin
+    if (user.role === 'admin') {
+        const adminLink = document.getElementById('adminLink');
+        if (adminLink) adminLink.style.display = '';
+    }
 
     // ---- Manual Add ----
     const expenseForm = document.getElementById('expenseForm');
@@ -22,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const amount = parseFloat(document.getElementById('amount').value);
         const expenseDate = document.getElementById('expenseDate').value;
         const description = document.getElementById('description').value.trim();
+        const isFixed = document.getElementById('isFixed').checked;
 
         if (!category || !amount || amount <= 0 || !expenseDate) {
             showAlert(expenseAlert, 'Please fill in all required fields.', 'danger');
@@ -30,10 +37,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showLoading(btn);
         try {
-            await ExpensesAPI.create(user.user_id, category, amount, expenseDate, description);
+            await ExpensesAPI.create(user.user_id, category, amount, expenseDate, description, isFixed);
             showAlert(expenseAlert, 'Expense added successfully!', 'success');
             expenseForm.reset();
-            loadExpenses(); // Refresh list
+            loadExpenses();
         } catch (error) {
             showAlert(expenseAlert, error.message, 'danger');
         } finally {
@@ -41,98 +48,72 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ---- File Import ----
-    const uploadZone = document.getElementById('uploadZone');
-    const fileInput = document.getElementById('fileInput');
-    const importAlert = document.getElementById('importAlert');
-    const importSummary = document.getElementById('importSummary');
+    // ---- Budget Logic ----
+    let currentBudget = parseFloat(user.monthly_budget) || 0.0;
+    const editBudgetBtn = document.getElementById('editBudgetBtn');
+    const saveBudgetBtn = document.getElementById('saveBudgetBtn');
+    const budgetDisplay = document.getElementById('budgetDisplay');
+    const budgetEditor = document.getElementById('budgetEditor');
+    const budgetInput = document.getElementById('budgetInput');
+    const budgetStatus = document.getElementById('budgetStatus');
+    const budgetBar = document.getElementById('budgetBar');
 
-    uploadZone.addEventListener('click', () => fileInput.click());
+    if (editBudgetBtn) {
+        editBudgetBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            budgetDisplay.style.display = 'none';
+            budgetEditor.style.display = 'flex';
+            budgetInput.value = currentBudget || '';
+        });
+    }
 
-    uploadZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadZone.classList.add('dragover');
-    });
+    if (saveBudgetBtn) {
+        saveBudgetBtn.addEventListener('click', async () => {
+            const newBudget = parseFloat(budgetInput.value);
+            if (isNaN(newBudget) || newBudget < 0) return;
 
-    uploadZone.addEventListener('dragleave', () => {
-        uploadZone.classList.remove('dragover');
-    });
+            const originalText = saveBudgetBtn.textContent;
+            saveBudgetBtn.textContent = '...';
+            try {
+                await AuthAPI.setBudget(user.user_id, newBudget);
+                currentBudget = newBudget;
+                // update local storage
+                user.monthly_budget = currentBudget;
+                localStorage.setItem('valuetrack_user', JSON.stringify(user));
+                
+                budgetEditor.style.display = 'none';
+                budgetDisplay.style.display = 'block';
+                updateBudgetUI(parseFloat(totalAmount.textContent.replace('₹', '')) || 0);
+            } catch (error) {
+                alert('Failed to save budget: ' + error.message);
+            } finally {
+                saveBudgetBtn.textContent = originalText;
+            }
+        });
+    }
 
-    uploadZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadZone.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files.length) handleFileUpload(files[0]);
-    });
-
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) handleFileUpload(e.target.files[0]);
-    });
-
-    async function handleFileUpload(file) {
-        // Validate file type
-        const ext = file.name.split('.').pop().toLowerCase();
-        if (!['csv', 'xlsx'].includes(ext)) {
-            showAlert(importAlert, 'Only .csv and .xlsx files are accepted.', 'danger');
-            return;
+    function updateBudgetUI(totalSpent) {
+        if (!budgetStatus) return;
+        budgetStatus.textContent = `₹${totalSpent.toLocaleString()} / ₹${currentBudget.toLocaleString()}`;
+        
+        let pct = 0;
+        if (currentBudget > 0) {
+            pct = (totalSpent / currentBudget) * 100;
         }
-
-        // Validate file size (10MB)
-        if (file.size > 10 * 1024 * 1024) {
-            showAlert(importAlert, 'File too large. Maximum size is 10MB.', 'danger');
-            return;
-        }
-
-        uploadZone.innerHTML = `
-            <span class="spinner"></span>
-            <p style="margin-top:0.5rem">Uploading ${file.name}...</p>
-        `;
-
-        try {
-            const result = await ExpensesAPI.import(user.user_id, file);
-
-            showAlert(importAlert, `Import complete!`, 'success');
-
-            // Show summary
-            importSummary.innerHTML = `
-                <div class="import-summary">
-                    <div class="import-stat inserted">
-                        <div class="count text-success">${result.inserted}</div>
-                        <div class="label">Inserted</div>
-                    </div>
-                    <div class="import-stat skipped">
-                        <div class="count text-warning">${result.skipped.length}</div>
-                        <div class="label">Skipped</div>
-                    </div>
-                </div>
-                ${result.skipped.length > 0 ? `
-                    <div class="card-flat" style="margin-top:1rem;">
-                        <table>
-                            <thead><tr><th>Row</th><th>Reason</th></tr></thead>
-                            <tbody>
-                                ${result.skipped.map(s => `<tr><td>${s.row}</td><td>${s.reason}</td></tr>`).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                ` : ''}
-            `;
-            importSummary.classList.remove('hidden');
-
-            loadExpenses();
-        } catch (error) {
-            showAlert(importAlert, error.message, 'danger');
-        } finally {
-            // Reset upload zone
-            uploadZone.innerHTML = `
-                <span class="material-symbols-outlined">upload_file</span>
-                <p>Drop CSV/XLSX file here or click to browse</p>
-                <p class="upload-hint">Max file size: 10MB</p>
-            `;
+        
+        if (pct > 100) pct = 100;
+        budgetBar.style.width = `${pct}%`;
+        
+        if (pct < 60) {
+            budgetBar.style.backgroundColor = 'var(--color-success, #10b981)';
+        } else if (pct < 90) {
+            budgetBar.style.backgroundColor = 'var(--color-warning, #f59e0b)';
+        } else {
+            budgetBar.style.backgroundColor = 'var(--color-danger, #ef4444)';
         }
     }
 
     // ---- Expense List ----
-    const expenseTable = document.getElementById('expenseTable');
     const expenseListBody = document.getElementById('expenseListBody');
     const totalAmount = document.getElementById('totalAmount');
     const filterMonth = document.getElementById('filterMonth');
@@ -156,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (result.expenses.length === 0) {
                 expenseListBody.innerHTML = `
-                    <tr><td colspan="5" class="text-center text-muted" style="padding:2rem;">
+                    <tr><td colspan="4" class="text-center text-muted" style="padding:2rem;">
                         No expenses found
                     </td></tr>`;
                 totalAmount.textContent = '₹0.00';
@@ -171,12 +152,16 @@ document.addEventListener('DOMContentLoaded', () => {
             expenseListBody.innerHTML = result.expenses.map(exp => {
                 const cat = exp.category.toLowerCase();
                 const icon = categoryIcons[cat] || '📌';
+                const fixedBadge = exp.is_fixed ? `<span class="badge" style="font-size:0.65rem; padding:0.1rem 0.4rem; background:var(--color-surface-hover); color:var(--color-text-secondary); margin-left:0.5rem; border-radius:4px; font-weight:700;">FIXED</span>` : '';
                 return `
                     <tr>
                         <td>${exp.expense_date}</td>
                         <td>
-                            <span style="margin-right:0.5rem">${icon}</span>
-                            ${exp.category}
+                            <span style="display:inline-flex; align-items:center;">
+                                <span style="margin-right:4px;">${icon}</span>
+                                ${exp.category}
+                                ${fixedBadge}
+                            </span>
                         </td>
                         <td class="font-bold">₹${exp.amount.toFixed(2)}</td>
                         <td class="text-secondary">${exp.description || '—'}</td>
@@ -185,9 +170,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }).join('');
 
             totalAmount.textContent = `₹${result.total.toFixed(2)}`;
-            expenseTable.classList.remove('hidden');
+            updateBudgetUI(result.total);
         } catch (error) {
-            showAlert(importAlert, `Failed to load expenses: ${error.message}`, 'danger');
+            showAlert(expenseAlert, `Failed to load expenses: ${error.message}`, 'danger');
         }
     }
 
