@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,148 +7,172 @@
     <meta name="description" content="Your financial overview at a glance. Track loans, expenses, and insurance.">
     <link rel="stylesheet" href="css/styles.css">
 </head>
-
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-inner">
-            <div class="flex items-center gap-8">
-                <div class="brand">
-                    <div class="brand-icon">
-                        <span class="material-symbols-outlined">account_balance_wallet</span>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-icon">
+                    <span class="material-symbols-outlined">account_balance_wallet</span>
+                </div>
+                <div>
+                    <div class="sidebar-brand-title">ValueTrack</div>
+                    <div class="sidebar-brand-sub">Wealth Management</div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="active">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="loans.html">
+                    <span class="material-symbols-outlined">payments</span>
+                    <span>Loans & EMI</span>
+                </a>
+                <a href="expenses.html">
+                    <span class="material-symbols-outlined">receipt_long</span>
+                    <span>Expenses</span>
+                </a>
+                <a href="insurance.html">
+                    <span class="material-symbols-outlined">verified_user</span>
+                    <span>Insurance</span>
+                </a>
+                <a href="admin.html" class="admin-link" id="adminLink" style="display:none;">
+                    <span class="material-symbols-outlined">admin_panel_settings</span>
+                    <span>Admin Panel</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="sidebar-user" onclick="logout()" style="cursor:pointer;" title="Click to logout">
+                    <div class="sidebar-user-avatar" id="userAvatar">
+                        <span class="material-symbols-outlined" style="font-size:1.25rem;">person</span>
                     </div>
-                    <span class="brand-name">ValueTrack</span>
-                </div>
-                <nav>
-                    <ul class="nav-links">
-                        <li><a href="dashboard.html" class="active">Dashboard</a></li>
-                        <li><a href="loans.html">Loans</a></li>
-                        <li><a href="expenses.html">Expenses</a></li>
-                        <li><a href="insurance.html">Insurance</a></li>
-                    </ul>
-                </nav>
-            </div>
-            <div class="header-actions">
-                <div class="user-badge" onclick="logout()">
-                    <span class="material-symbols-outlined" style="font-size:1rem">person</span>
-                    <span id="userName">User</span>
-                    <span class="material-symbols-outlined" style="font-size:1rem">logout</span>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="layout-container page-content">
-        <!-- Page Header -->
-        <div class="page-header">
-            <div>
-                <h1>Dashboard Overview</h1>
-                <p class="text-secondary text-sm mt-1">Welcome back! Here's your financial summary.</p>
-            </div>
-        </div>
-
-        <!-- Stat Cards -->
-        <div id="statsGrid" class="grid grid-cols-4 lg:grid-cols-4 gap-6 mb-10">
-            <!-- Total Loans -->
-            <div class="card stat-card">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="stat-icon">
-                        <span class="material-symbols-outlined">account_balance</span>
+                    <div style="flex:1; min-width:0;">
+                        <div class="sidebar-user-name" id="userName">User</div>
+                        <div class="sidebar-user-role">ValueTrack User</div>
                     </div>
-                    <span class="stat-badge neutral">Active</span>
+                    <span class="material-symbols-outlined" style="font-size:1.125rem; color:var(--color-text-muted);">logout</span>
                 </div>
-                <p class="stat-label">Total Loans</p>
-                <h3 class="stat-value" id="totalLoans">—</h3>
             </div>
+        </aside>
 
-            <!-- Outstanding Principal -->
-            <div class="card stat-card">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="stat-icon">
-                        <span class="material-symbols-outlined">credit_card</span>
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <h2 class="top-header-title">Dashboard</h2>
+                <div class="top-header-actions">
+                </div>
+            </header>
+
+            <!-- Scrollable Content -->
+            <div class="content-area">
+                <div class="content-inner" style="display:flex; flex-direction:column; gap:2rem;">
+
+                    <!-- Summary Stat Cards -->
+                    <div class="grid grid-cols-4 gap-6" id="statsGrid">
+                        <!-- Total Loans -->
+                        <div class="card stat-card">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="stat-icon blue">
+                                    <span class="material-symbols-outlined">account_balance</span>
+                                </div>
+                                <span class="trend-badge up">
+                                    <span class="material-symbols-outlined">trending_up</span>Active
+                                </span>
+                            </div>
+                            <p class="stat-label">Total Loans</p>
+                            <h3 class="stat-value" id="totalLoans">—</h3>
+                            <p class="stat-sub">Active loan accounts</p>
+                        </div>
+
+                        <!-- Outstanding Balance -->
+                        <div class="card stat-card">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="stat-icon amber">
+                                    <span class="material-symbols-outlined">pending_actions</span>
+                                </div>
+                            </div>
+                            <p class="stat-label">Outstanding Principal</p>
+                            <h3 class="stat-value" id="outstandingPrincipal">—</h3>
+                            <p class="stat-sub">Remaining balance</p>
+                        </div>
+
+                        <!-- Monthly Expenses -->
+                        <div class="card stat-card">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="stat-icon indigo">
+                                    <span class="material-symbols-outlined">shopping_cart</span>
+                                </div>
+                            </div>
+                            <p class="stat-label">Monthly Expenses</p>
+                            <h3 class="stat-value" id="monthlyExpenses">—</h3>
+                            <div class="score-bar-container" style="margin-top:0.5rem; margin-bottom:0.25rem; height:4px; background:var(--color-surface); border:1px solid var(--color-border);">
+                                <div id="dashboardBudgetBar" class="score-bar" style="width:0%; background-color:var(--color-primary); transition:width 0.3s ease;"></div>
+                            </div>
+                            <p class="stat-sub" id="budgetStatusText">Current month total</p>
+                        </div>
+
+                        <!-- Next EMI -->
+                        <div class="card stat-card">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="stat-icon emerald">
+                                    <span class="material-symbols-outlined">event_upcoming</span>
+                                </div>
+                                <span class="trend-badge neutral" id="nextEmiTag">UPCOMING</span>
+                            </div>
+                            <p class="stat-label">Next EMI Payment</p>
+                            <h3 class="stat-value" id="nextEmiAmount">—</h3>
+                            <p class="stat-sub" id="nextEmiDate"></p>
+                        </div>
                     </div>
-                </div>
-                <p class="stat-label">Outstanding Principal</p>
-                <h3 class="stat-value" id="outstandingPrincipal">—</h3>
-            </div>
 
-            <!-- Monthly Expenses -->
-            <div class="card stat-card">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="stat-icon">
-                        <span class="material-symbols-outlined">shopping_cart</span>
+
+
+                    <!-- Recent Activity Table -->
+                    <div class="card-flat">
+                        <div class="p-6 flex items-center justify-between" style="border-bottom:1px solid var(--color-border);">
+                            <h4 style="font-size:1.125rem; font-weight:700;">Recent Activity</h4>
+                            <a href="expenses.html" style="font-size:0.875rem; font-weight:600;">View All Transactions</a>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Transaction</th>
+                                        <th>Category</th>
+                                        <th style="text-align:right;">Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activityTableBody">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted" style="padding:2rem;">Loading dashboard data...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
-                <p class="stat-label">Monthly Expenses</p>
-                <h3 class="stat-value" id="monthlyExpenses">—</h3>
-            </div>
 
-            <!-- Next EMI -->
-            <div class="card stat-card">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="stat-icon">
-                        <span class="material-symbols-outlined">calendar_clock</span>
+                    <!-- Insurance Card -->
+                    <div id="insuranceCard" class="card">
+                        <div class="flex items-center gap-4">
+                            <div class="stat-icon blue" style="width:3rem; height:3rem;">
+                                <span class="material-symbols-outlined">shield</span>
+                            </div>
+                            <div>
+                                <h3>Top Insurance Match</h3>
+                                <p class="text-sm text-muted">Run an insurance request to see your top match here.</p>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <p class="stat-label">Next EMI Payment</p>
-                <h3 class="stat-value" id="nextEmiAmount">—</h3>
-                <p class="stat-sub" id="nextEmiDate"></p>
-            </div>
-        </div>
 
-        <!-- Content Grid -->
-        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:2rem;">
-            <!-- Insurance Result -->
-            <div>
-                <h2 class="mb-4">Top Insurance Match</h2>
-                <div id="insuranceCard" class="card">
-                    <div class="empty-state">
-                        <span class="material-symbols-outlined">shield</span>
-                        <h3>No Insurance Data</h3>
-                        <p>Run an insurance request to see your top match here.</p>
-                    </div>
                 </div>
             </div>
+        </main>
+    </div>
 
-            <!-- Quick Actions -->
-            <div>
-                <h2 class="mb-4">Quick Actions</h2>
-                <div class="flex flex-col gap-3">
-                    <a href="loans.html" class="btn btn-secondary btn-full" style="justify-content:flex-start;">
-                        <span class="material-symbols-outlined">add_circle</span>
-                        Create New Loan
-                    </a>
-                    <a href="expenses.html" class="btn btn-secondary btn-full" style="justify-content:flex-start;">
-                        <span class="material-symbols-outlined">upload_file</span>
-                        Import Expenses
-                    </a>
-                    <a href="insurance.html" class="btn btn-secondary btn-full" style="justify-content:flex-start;">
-                        <span class="material-symbols-outlined">verified_user</span>
-                        Check Insurance
-                    </a>
-                </div>
-
-                <!-- Promo Card -->
-                <div class="promo-card" style="margin-top:1.5rem;">
-                    <div class="brand-icon" style="background:rgba(255,255,255,0.2); color:white; margin-bottom:1rem;">
-                        <span class="material-symbols-outlined">school</span>
-                    </div>
-                    <h3>Academic Project</h3>
-                    <p>ValueTrack is a 2nd-year B.Tech mini project demonstrating financial management concepts.</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Chart Stub -->
-        <div class="card mt-8" style="margin-top:2rem;">
-            <h2 class="mb-4">Expense Trend (Stub)</h2>
-            <canvas id="expenseChart" width="800" height="200"
-                style="width:100%; max-height:200px; background:var(--color-bg); border-radius:var(--radius-md);"></canvas>
-            <p class="text-xs text-muted mt-2 text-center">Chart placeholder — implement with Chart.js or similar
-                library in v2.</p>
-        </div>
-    </main>
 
     <script src="js/api.js"></script>
     <script>
@@ -159,14 +182,36 @@
 
             document.getElementById('userName').textContent = user.name;
 
+            // Show admin link if admin
+            if (user.role === 'admin') {
+                const adminLink = document.getElementById('adminLink');
+                if (adminLink) adminLink.style.display = '';
+            }
+
             try {
                 const data = await DashboardAPI.get(user.user_id);
 
                 document.getElementById('totalLoans').textContent = data.total_loans;
                 document.getElementById('outstandingPrincipal').textContent =
                     `₹${data.total_outstanding_principal.toLocaleString()}`;
-                document.getElementById('monthlyExpenses').textContent =
-                    `₹${data.monthly_expenses.toLocaleString()}`;
+
+                // Calculate budget progress bar on Dashboard
+                let expText = `₹${data.monthly_expenses.toLocaleString()}`;
+                if (data.monthly_budget > 0) {
+                    expText += ` / ₹${data.monthly_budget.toLocaleString()}`;
+                    const pct = Math.min((data.monthly_expenses / data.monthly_budget) * 100, 100);
+                    const bar = document.getElementById('dashboardBudgetBar');
+                    bar.style.width = pct + '%';
+                    if (pct >= 100) bar.style.backgroundColor = 'var(--color-danger)';
+                    else if (pct > 75) bar.style.backgroundColor = 'var(--color-warning)';
+                    else bar.style.backgroundColor = 'var(--color-success)';
+
+                    document.getElementById('budgetStatusText').textContent = 'Current month budget';
+                } else {
+                    document.getElementById('budgetStatusText').textContent = 'No monthly budget set';
+                }
+                
+                document.getElementById('monthlyExpenses').textContent = expText;
 
                 if (data.next_emi) {
                     document.getElementById('nextEmiAmount').textContent =
@@ -180,15 +225,15 @@
 
                 if (data.top_insurance) {
                     document.getElementById('insuranceCard').innerHTML = `
-                        <div class="flex items-center gap-4">
-                            <div class="stat-icon" style="width:3rem;height:3rem;">
+                        <div class="flex items-center gap-4" style="flex-wrap:wrap;">
+                            <div class="stat-icon blue" style="width:3rem; height:3rem;">
                                 <span class="material-symbols-outlined">verified_user</span>
                             </div>
-                            <div class="flex-1">
-                                <h3>${data.top_insurance.provider}</h3>
-                                <p class="text-sm text-secondary">Top Recommended Plan</p>
+                            <div style="flex:1; min-width:150px;">
+                                <h3>${data.top_insurance.plan_name}</h3>
+                                <p class="text-sm text-muted">${data.top_insurance.type} Plan</p>
                             </div>
-                            <div class="text-right">
+                            <div style="text-align:right;">
                                 <div style="font-size:1.5rem; font-weight:700; color:var(--color-primary);">
                                     ${(data.top_insurance.rank_score * 100).toFixed(1)}%
                                 </div>
@@ -201,15 +246,23 @@
                     `;
                 }
 
-                // Simple chart stub drawing
-                const canvas = document.getElementById('expenseChart');
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#e6f4f4';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#006b6b';
-                ctx.font = '14px Plus Jakarta Sans, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('📊 Chart visualization available in v2', canvas.width / 2, canvas.height / 2);
+                // Populate Recent Activity Table
+                const tbody = document.getElementById('activityTableBody');
+                if (data.recent_activity && data.recent_activity.length > 0) {
+                    tbody.innerHTML = data.recent_activity.map(exp => `
+                        <tr>
+                            <td>${new Date(exp.date).toLocaleDateString()}</td>
+                            <td>${exp.description || '—'}</td>
+                            <td><span class="badge ${exp.is_fixed ? 'badge-primary' : 'badge-neutral'}">${exp.category} ${exp.is_fixed ? ' (Fixed)' : ''}</span></td>
+                            <td style="text-align:right; font-weight:600;">₹${exp.amount.toLocaleString()}</td>
+                            <td><span class="badge badge-success">Completed</span></td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding:2rem;">No recent transactions found.</td></tr>`;
+                }
+
+
 
             } catch (error) {
                 console.error('Dashboard load error:', error);
@@ -217,5 +270,4 @@
         });
     </script>
 </body>
-
 </html>
