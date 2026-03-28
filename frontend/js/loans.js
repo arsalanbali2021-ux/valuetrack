@@ -11,6 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const userNameEl = document.getElementById('userName');
     if (userNameEl) userNameEl.textContent = user.name;
 
+    // Show admin link if admin
+    if (user.role === 'admin') {
+        const adminLink = document.getElementById('adminLink');
+        if (adminLink) adminLink.style.display = '';
+    }
+
     const loanForm = document.getElementById('loanForm');
     const loanAlert = document.getElementById('loanAlert');
     const scheduleSection = document.getElementById('scheduleSection');
@@ -86,10 +92,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+
+
     async function loadSchedule(loanId) {
         try {
             const result = await LoansAPI.getSchedule(loanId);
             currentSchedule = result.schedule;
+            
+
+
             currentPage = 1;
             scheduleSection.classList.remove('hidden');
             renderPage();
@@ -97,6 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
             showAlert(loanAlert, `Failed to load schedule: ${error.message}`, 'danger');
         }
     }
+
+
 
     function renderPage() {
         const start = (currentPage - 1) * rowsPerPage;
