@@ -1,13 +1,8 @@
--- ============================================================
--- ValueTrack — Seed: Sample Users
--- Passwords are bcrypt-hashed.  Plaintext listed for testing.
--- Run AFTER schema.sql:  mysql -u root -p valuetrack < seed_sample_users.sql
--- ============================================================
+-- Seed: Sample Users (run after schema.sql)
+-- alice@example.com / Password123
+-- bob@example.com   / SecurePass1
 
 USE valuetrack;
-
--- User 1:  email = alice@example.com   password = Password123
--- User 2:  email = bob@example.com     password = SecurePass1
 
 INSERT INTO users (name, email, password_hash) VALUES
   ('Alice Johnson', 'alice@example.com',

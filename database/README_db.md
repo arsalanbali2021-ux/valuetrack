@@ -30,4 +30,3 @@ mysql -u root -p valuetrack < seed_sample_users.sql
 - `schema.sql` — DDL for all tables
 - `seed_insurance.sql` — 15 realistic policies
 - `seed_sample_users.sql` — 2 demo users (see file for credentials)
-- `expense_template.csv` — Sample import file with intentional errors
