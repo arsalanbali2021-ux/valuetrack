@@ -2,9 +2,9 @@
 
 CREATE DATABASE IF NOT EXISTS valuetrack -- New Database is created 
   CHARACTER SET utf8mb4 -- supports 4 byte characters 
-  COLLATE utf8mb4_unicode_ci; --string comparison and sorting happens(a and A are treated as equal)
+  COLLATE utf8mb4_unicode_ci; -- string comparison and sorting happens(a and A are treated as equal)
 
-USE valuetrack; --selects the database 
+USE valuetrack; -- selects the database 
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
@@ -12,13 +12,14 @@ CREATE TABLE IF NOT EXISTS users (
     name          VARCHAR(120)  NOT NULL,
     email         VARCHAR(255)  NOT NULL UNIQUE,
     password_hash VARCHAR(255)  NOT NULL,
-    role          ENUM('user','admin') NOT NULL DEFAULT 'user', --enum restricts values to a fixed set (user,admin)
+    role          ENUM('user','admin') NOT NULL DEFAULT 'user', -- enum restricts values to a fixed set (user,admin)
+    monthly_budget DECIMAL(12,2) DEFAULT 0.00, -- spending limit shown on expenses page and dashboard
     created_at    TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 -- Key-value store for scoring weights these values are used in calculations 
 CREATE TABLE IF NOT EXISTS system_settings (
-    setting_id    INT PRIMARY KEY AUTO_INCREMENT, --genrates next id automatically
+    setting_id    INT PRIMARY KEY AUTO_INCREMENT, -- genrates next id automatically
     setting_key   VARCHAR(100) NOT NULL UNIQUE,
     setting_value VARCHAR(100) NOT NULL,
     updated_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -28,7 +29,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
 CREATE TABLE IF NOT EXISTS expense_categories (
     category_id   INT PRIMARY KEY AUTO_INCREMENT,
     category_name VARCHAR(80) NOT NULL UNIQUE,
-    icon          VARCHAR(50) DEFAULT 'category', --stores icon or icon name
+    icon          VARCHAR(50) DEFAULT 'category', -- stores icon or icon name
     created_at    TIMESTAMP   DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -42,7 +43,7 @@ CREATE TABLE IF NOT EXISTS loans (
     start_date          DATE           NOT NULL,
     created_at          TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_loans_user_id (user_id), -- index to speed up searches 
-    CONSTRAINT fk_loans_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE  --if parent user is deleted all the loans are deleted
+    CONSTRAINT fk_loans_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE  -- if parent user is deleted all the loans are deleted
 ) ENGINE=InnoDB;
 
 -- EMI schedule also called amortization schedule   one loan can have multiple emi records which can lead to repeating and violating 1nf
@@ -53,7 +54,7 @@ CREATE TABLE IF NOT EXISTS emi_schedule (
     emi_amount          DECIMAL(12,2)  NOT NULL,
 
     
-    principal_component DECIMAL(12,2)  NOT NULL,  --(12,2 means minimum and maximum value it can hold )
+    principal_component DECIMAL(12,2)  NOT NULL,  -- (12,2 means minimum and maximum value it can hold )
     interest_component  DECIMAL(12,2)  NOT NULL,
     remaining_balance   DECIMAL(12,2)  NOT NULL,
     due_date            DATE           NOT NULL,
@@ -70,6 +71,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     amount       DECIMAL(12,2)  NOT NULL CHECK (amount > 0),
     expense_date DATE           NOT NULL,
     description  TEXT,
+    is_fixed     TINYINT(1)     DEFAULT 0, -- 1 for recurring costs like rent
     created_at   TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_expenses_user_date (user_id, expense_date),
     CONSTRAINT fk_expenses_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
@@ -124,8 +126,8 @@ CREATE TABLE IF NOT EXISTS insurance_result (
 
 -- default assigns automatic value if no value is given
 -- update timestamp automaytically updates timestamp whenever there is modification
---text is used for description and longer strings 
---innodb is a storage engine that supports forign key, and is used for relational projects 
+-- text is used for description and longer strings 
+-- innodb is a storage engine that supports forign key, and is used for relational projects 
 -- index speeds up seraching and sorting
 -- unique key make sures that the combbination of two columns cannot reoeat 
 -- multiple tables were created to reduce redundancy using normalization

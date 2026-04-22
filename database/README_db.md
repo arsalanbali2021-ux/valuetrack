@@ -1,7 +1,7 @@
 # ValueTrack Database
 
 ## Overview
-MySQL 8+ relational database with 7 tables in Third Normal Form (3NF).
+MySQL 8+ relational database: 7 core tables plus 2 admin tables, mostly in Third Normal Form (3NF).
 
 ## Setup
 ```bash
@@ -25,8 +25,10 @@ mysql -u root -p valuetrack < seed_sample_users.sql
 | `insurance`         | Master list of insurance policies    |
 | `insurance_request` | User insurance eligibility requests  |
 | `insurance_result`  | Ranked scoring results per request   |
+| `system_settings`   | Key-value settings (admin)           |
+| `expense_categories`| Expense categories (admin)           |
 
 ## Files
 - `schema.sql` — DDL for all tables
-- `seed_insurance.sql` — 15 realistic policies
-- `seed_sample_users.sql` — 2 demo users (see file for credentials)
+- `seed_insurance.sql` — 30 sample plans (illustrative premiums, not real quotes)
+- `seed_sample_users.sql` — 2 demo users + 1 demo admin (credentials in the file header)
