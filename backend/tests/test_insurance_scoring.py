@@ -1,155 +1,127 @@
 """
 ValueTrack -- Insurance Scoring Unit Tests
-Test the scoring formula directly (no DB required).
-Covers: pre-existing condition, tiny budget, age out of range.
+Tests the scoring formula directly (no DB required).
+
+Scoring recap (services/insurance_service.py):
+  hard filters: age within min_age..max_age, monthly_premium <= budget
+  base 0.50
+  +0.15 critical illness (if needed and covered)
+  +0.15 maternity        (if needed and covered)
+  +0.10 accident         (if needed and covered)
+  +0.10 * coverage / max_coverage
 """
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from unittest.mock import MagicMock
+from types import SimpleNamespace
+
+from services.insurance_service import _calculate_score
 
 
-def _make_policy(insurance_id=1, provider='Test', plan='Plan',
-                 min_age=18, max_age=65, premium=10000.0,
-                 coverage=500000.0, pre_existing_allowed=0):
-    """Create a mock policy object."""
-    policy = MagicMock()
-    policy.insurance_id = insurance_id
-    policy.provider_name = provider
-    policy.plan_name = plan
-    policy.min_age = min_age
-    policy.max_age = max_age
-    policy.premium = premium
-    policy.coverage_amount = coverage
-    policy.pre_existing_allowed = pre_existing_allowed
-    return policy
+def _make_policy(insurance_id=1, min_age=18, max_age=65, premium=800.0,
+                 coverage=500000.0, critical=0, maternity=0, accident=0):
+    """Plain object with the same fields as the Insurance model."""
+    return SimpleNamespace(
+        insurance_id=insurance_id,
+        plan_name=f'Plan {insurance_id}',
+        plan_type='Individual',
+        min_age=min_age,
+        max_age=max_age,
+        monthly_premium=premium,
+        coverage_amount=coverage,
+        has_critical_illness=critical,
+        has_maternity=maternity,
+        has_accident=accident,
+        co_pay_percentage=0,
+    )
 
 
-def test_score_pre_existing_condition():
-    """
-    User WITH pre-existing condition:
-    - Policy that doesn't allow it -> PreExistingSupport = 0
-    - Policy that allows it -> PreExistingSupport = 1
-    """
-    from services.insurance_service import _calculate_score
-
-    # Policy does NOT allow pre-existing
-    policy_no = _make_policy(pre_existing_allowed=0)
-    score_no, _ = _calculate_score(policy_no, age=30, pre_existing=True,
-                                 annual_budget=15000, max_coverage=500000)
-
-    # Policy DOES allow pre-existing
-    policy_yes = _make_policy(pre_existing_allowed=1)
-    score_yes, _ = _calculate_score(policy_yes, age=30, pre_existing=True,
-                                  annual_budget=15000, max_coverage=500000)
-
-    # The one that allows should score higher (by 0.20 weight)
-    assert score_yes > score_no, \
-        f"Policy with pre-existing support ({score_yes}) should score higher than without ({score_no})"
-
-    # When user has NO pre-existing, both should get full PreExistingSupport
-    score_no_cond, _ = _calculate_score(policy_no, age=30, pre_existing=False,
-                                      annual_budget=15000, max_coverage=500000)
-    score_yes_cond, _ = _calculate_score(policy_yes, age=30, pre_existing=False,
-                                       annual_budget=15000, max_coverage=500000)
-    assert score_no_cond == score_yes_cond, \
-        "Without pre-existing condition, both policies should score equally on that component"
-
-    print("[PASS] test_score_pre_existing_condition")
+def _score(policy, age=30, ci=False, mat=False, acc=False, budget=1000.0, max_cov=500000.0):
+    return _calculate_score(policy, age, ci, mat, acc, budget, max_cov)
 
 
-def test_tiny_budget():
-    """
-    User with very small budget vs. expensive policies.
-    BudgetFit should be low or zero.
-    """
-    from services.insurance_service import _calculate_score
+def test_age_out_of_range_is_filtered():
+    policy = _make_policy(min_age=18, max_age=35)
 
-    # Premium 20000 but budget only 5000
-    policy = _make_policy(premium=20000, coverage=500000)
-    score, _ = _calculate_score(policy, age=30, pre_existing=False,
-                              annual_budget=5000, max_coverage=500000)
+    score, reasons = _score(policy, age=50)
+    assert score == 0.0
+    assert reasons == []
 
-    # BudgetFit = max(0, 1 - (20000-5000)/5000) = max(0, 1-3) = 0
-    # Score = AgeMatch*0.30 + 0*0.40 + 1*0.20 + (500000/500000)*0.10
-    #       = 0.30 + 0 + 0.20 + 0.10 = 0.60
-    expected = 0.60
-    assert abs(score - expected) < 0.001, \
-        f"Score {score} should be close to {expected} for tiny budget"
-
-    # Zero budget
-    score_zero, _ = _calculate_score(policy, age=30, pre_existing=False,
-                                   annual_budget=0, max_coverage=500000)
-    # BudgetFit = 0 (special case for zero budget)
-    expected_zero = 0.30 + 0.0 + 0.20 + 0.10  # = 0.60
-    assert abs(score_zero - expected_zero) < 0.001, \
-        f"Zero budget score {score_zero} should be {expected_zero}"
-
-    print("[PASS] test_tiny_budget")
+    # Edges of the range are allowed
+    assert _score(policy, age=18)[0] > 0
+    assert _score(policy, age=35)[0] > 0
 
 
-def test_age_out_of_range():
-    """
-    User age outside policy's min_age -- max_age range.
-    AgeMatch should be 0, reducing score significantly.
-    """
-    from services.insurance_service import _calculate_score
+def test_over_budget_is_filtered():
+    policy = _make_policy(premium=1500)
 
-    # Policy for 18-35 but user is 50
-    policy = _make_policy(min_age=18, max_age=35, premium=5000, coverage=300000)
-    score, _ = _calculate_score(policy, age=50, pre_existing=False,
-                              annual_budget=15000, max_coverage=500000)
+    score, reasons = _score(policy, budget=1000)
+    assert score == 0.0
+    assert reasons == []
 
-    # AgeMatch = 0
-    # BudgetFit = 1 (5000 <= 15000)
-    # PreExisting = 1
-    # CoverageBonus = 300000/500000 = 0.6
-    # Score = 0 + 0.40 + 0.20 + 0.06 = 0.66
-    assert score < 0.70, f"Out-of-range age should reduce score, got {score}"
+    # Premium exactly equal to budget is fine
+    assert _score(policy, budget=1500)[0] > 0
 
-    # Within range
-    score_in, _ = _calculate_score(policy, age=25, pre_existing=False,
-                                 annual_budget=15000, max_coverage=500000)
-    assert score_in > score, \
-        f"In-range ({score_in}) should score higher than out-of-range ({score})"
 
-    print("[PASS] test_age_out_of_range")
+def test_base_score_with_no_needs():
+    # No needs ticked, plan has the biggest coverage -> 0.50 + 0.10
+    policy = _make_policy(coverage=500000)
+    score, reasons = _score(policy, max_cov=500000)
+    assert abs(score - 0.60) < 1e-9
+    assert any('limit met' in r['text'] for r in reasons)
+    assert any('Under budget' in r['text'] for r in reasons)
+
+
+def test_all_needs_covered_hits_max_score():
+    policy = _make_policy(coverage=500000, critical=1, maternity=1, accident=1)
+    score, _ = _score(policy, ci=True, mat=True, acc=True, max_cov=500000)
+    assert abs(score - 1.0) < 1e-9
+
+
+def test_each_need_adds_its_weight():
+    base, _ = _score(_make_policy(coverage=0, critical=1, maternity=1, accident=1))
+    ci, _ = _score(_make_policy(coverage=0, critical=1), ci=True)
+    mat, _ = _score(_make_policy(coverage=0, maternity=1), mat=True)
+    acc, _ = _score(_make_policy(coverage=0, accident=1), acc=True)
+
+    assert abs(base - 0.50) < 1e-9
+    assert abs(ci - 0.65) < 1e-9
+    assert abs(mat - 0.65) < 1e-9
+    assert abs(acc - 0.60) < 1e-9
+
+
+def test_missing_cover_gives_no_points_and_says_so():
+    policy = _make_policy(coverage=0, maternity=0)
+    score, reasons = _score(policy, mat=True)
+    assert abs(score - 0.50) < 1e-9
+    assert any(r['text'] == 'NO Maternity Cover' for r in reasons)
+
+
+def test_coverage_bonus_scales_with_coverage():
+    half, _ = _score(_make_policy(coverage=250000), max_cov=500000)
+    full, _ = _score(_make_policy(coverage=500000), max_cov=500000)
+    assert abs(half - 0.55) < 1e-9
+    assert abs(full - 0.60) < 1e-9
+
+
+def test_zero_max_coverage_does_not_crash():
+    score, _ = _score(_make_policy(coverage=0), max_cov=0)
+    assert abs(score - 0.50) < 1e-9
 
 
 def test_score_ordering():
-    """Policies should be ordered by score descending."""
-    from services.insurance_service import _calculate_score
-
+    """A plan matching more needs should rank above one that matches fewer."""
     policies = [
-        _make_policy(insurance_id=1, premium=5000, coverage=300000,
-                     min_age=18, max_age=65, pre_existing_allowed=0),
-        _make_policy(insurance_id=2, premium=8000, coverage=500000,
-                     min_age=18, max_age=65, pre_existing_allowed=1),
-        _make_policy(insurance_id=3, premium=25000, coverage=2000000,
-                     min_age=25, max_age=45, pre_existing_allowed=1),
+        _make_policy(insurance_id=1, coverage=300000),
+        _make_policy(insurance_id=2, coverage=500000, maternity=1),
+        _make_policy(insurance_id=3, coverage=500000, maternity=1, critical=1),
+        _make_policy(insurance_id=4, coverage=1000000, premium=5000, maternity=1, critical=1),
     ]
-    max_cov = 2000000.0
-
-    scored = []
-    for p in policies:
-        s, _ = _calculate_score(p, age=30, pre_existing=True,
-                              annual_budget=10000, max_coverage=max_cov)
-        scored.append((p.insurance_id, s))
-
+    scored = [(p.insurance_id, _score(p, ci=True, mat=True, budget=1000, max_cov=1000000)[0])
+              for p in policies]
+    scored = [s for s in scored if s[1] > 0]
     scored.sort(key=lambda x: x[1], reverse=True)
 
-    # Verify descending order
-    for i in range(len(scored) - 1):
-        assert scored[i][1] >= scored[i + 1][1], \
-            f"Score ordering violated: {scored[i]} should >= {scored[i+1]}"
-
-    print("[PASS] test_score_ordering")
-
-
-if __name__ == '__main__':
-    test_score_pre_existing_condition()
-    test_tiny_budget()
-    test_age_out_of_range()
-    test_score_ordering()
-    print("\nAll insurance scoring tests passed!")
+    # Plan 4 is over budget, so it's filtered out
+    assert [pid for pid, _ in scored] == [3, 2, 1]

@@ -91,7 +91,25 @@ cd valuetrack
 mysql -u root -p < database/schema.sql
 ```
 
-This creates the `valuetrack` database and all its tables. Before you seed anything, read the note under [Known issues](#known-issues). The current seed file is behind the schema.
+This creates the `valuetrack` database and all its tables. Then load the sample data:
+
+```bash
+mysql -u root -p valuetrack < database/seed_insurance.sql
+```
+
+```bash
+mysql -u root -p valuetrack < database/seed_sample_users.sql
+```
+
+The first gives the recommender 30 plans to rank. The second is optional and adds demo accounts so you can log in straight away:
+
+| Email               | Password      | Role  |
+|---------------------|---------------|-------|
+| `alice@example.com` | `Password123` | user (budget ₹25,000) |
+| `bob@example.com`   | `SecurePass1` | user  |
+| `admin@example.com` | `AdminPass1`  | admin |
+
+These are for local testing only.
 
 ### 4. Set up the backend
 
@@ -150,7 +168,7 @@ python app.py
 
 Or just double-click `run.bat` on Windows.
 
-Then open **http://127.0.0.1:5000** in your browser. Flask serves the frontend itself, so you don't need a second server. Register an account, log in, and you're in.
+Then open **http://127.0.0.1:5000** in your browser. Flask serves the frontend itself, so you don't need a second server. Log in with a demo account or register your own.
 
 Quick check that the API is alive:
 
@@ -160,7 +178,7 @@ curl http://127.0.0.1:5000/api/health
 
 ### 7. Make yourself an admin (optional)
 
-Nobody can sign up as an admin. That's on purpose. Register normally, then promote your account in MySQL:
+Nobody can sign up as an admin. That's on purpose. You can use the demo admin above, or register normally and promote your account in MySQL:
 
 ```sql
 USE valuetrack;
@@ -176,7 +194,7 @@ cd backend
 python -m pytest -v
 ```
 
-The EMI tests (`test_emi.py`) run without a database. They check the formula, the zero-interest case and that the final balance is exactly zero.
+None of the tests need a database. `test_emi.py` checks the formula, the zero-interest case and that the final balance is exactly zero. `test_insurance_scoring.py` checks the age and budget filters, every scoring weight, the coverage bonus and the ranking order.
 
 ## API at a glance
 
@@ -206,7 +224,7 @@ More detail, including request bodies, is in [docs/API_DOCS.md](docs/API_DOCS.md
 
 I'd rather list these than have you discover them at 2 a.m. before a demo.
 
-- **Schema vs. models drift.** The Python models have a `users.monthly_budget` column and an `expenses.is_fixed` column, but `database/schema.sql` doesn't create them yet. Until that's fixed, run this after `schema.sql`:
+- **Upgrading an older database?** If you created your database before v1.0.1, it's missing two columns. Add them once:
 
   ```sql
   USE valuetrack;
@@ -214,14 +232,13 @@ I'd rather list these than have you discover them at 2 a.m. before a demo.
   ALTER TABLE expenses ADD COLUMN is_fixed TINYINT(1) DEFAULT 0;
   ```
 
-- **Insurance seed file is outdated.** `seed_insurance.sql` still uses the old columns (`provider_name`, `premium`, `pre_existing_allowed`). That was before I reworked insurance around critical illness, maternity and accident cover, so it won't insert into the current table. For now the easiest way to add plans is the admin panel.
-- **Insurance tests are outdated too.** `test_insurance_scoring.py` still calls the old scorer signature, so those 4 tests fail. The EMI tests pass.
+  A fresh install from `schema.sql` already has them.
 - **Auth is demo-grade.** Passwords are properly bcrypt-hashed, but after login the frontend keeps the user in `localStorage` and sends `user_id` with requests. The server doesn't verify the token on each call. It's fine for a college project on localhost. Don't put it on the internet like this.
 - **Loans page has no "my loans" list.** You see a loan's schedule right after you create it, or by entering its ID.
 
 ## Where it's going
 
-The wishlist is in [docs/ROADMAP.md](docs/ROADMAP.md). At the top: proper JWT auth, Alembic migrations (so the schema drift above can't happen again), a loans list, PDF export of EMI schedules, and EMI reminder emails.
+The wishlist is in [docs/ROADMAP.md](docs/ROADMAP.md). At the top: proper JWT auth, Alembic migrations (so schema upgrades don't need hand-written `ALTER`s), a loans list, PDF export of EMI schedules, and EMI reminder emails.
 
 ## Docs
 

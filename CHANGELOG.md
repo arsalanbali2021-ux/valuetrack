@@ -2,6 +2,15 @@
 
 All notable changes to ValueTrack, newest first.
 
+## [1.0.1] - 2026-04-23
+
+### Fixed
+- `schema.sql` now creates `users.monthly_budget` and `expenses.is_fixed`
+- SQL comments that MySQL refused to parse (`--` needs a space after it)
+- Insurance seed rewritten for the current insurance table (30 plans)
+- Sample users now have real bcrypt hashes, plus a demo admin account
+- Insurance scoring tests rewritten for the current scorer (12 tests passing)
+
 ## [1.0.0] - 2026-04-14
 
 ### Added

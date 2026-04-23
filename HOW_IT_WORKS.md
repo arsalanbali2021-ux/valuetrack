@@ -147,8 +147,7 @@ The full write-up, with the ER diagram explanation, normalization and the viva q
 
 I'd rather be upfront:
 
-- `schema.sql` is a little behind the Python models (`monthly_budget` on users, `is_fixed` on expenses). The README has the two `ALTER TABLE` lines to fix it. Proper migrations with Alembic would stop this from happening again.
-- The insurance seed file and the insurance tests are still written for the old scoring version.
+- For a while `schema.sql` fell behind the Python models. `monthly_budget` and `is_fixed` were in the code but not in the SQL, and the insurance seed and tests were still written for the old scorer. I caught all of it in v1.0.1 by loading everything into a fresh database. Lesson learned: test the setup from zero, not just on my own machine. Proper migrations with Alembic are next, so this can't sneak up on me again.
 - Auth isn't production-grade (see above).
 - There's no "list all my loans" view yet.
 
