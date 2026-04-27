@@ -8,11 +8,17 @@
   A personal finance and insurance helper: track loans, watch your monthly spending, and find a health plan that actually fits your budget.
 </p>
 
+<p align="center">
+  <sub>🎓 College mini project · 2nd-year B.Tech</sub>
+</p>
+
 ---
 
 ## What is this?
 
-ValueTrack is a full-stack web app I built as my 2nd-year B.Tech mini project. It started as "let me just calculate an EMI properly" and kept growing. Now it covers four things:
+> **This is a college mini project.** I built ValueTrack in my 2nd year of B.Tech as my mini project. The database write-up I prepared for my viva is included in this repo too. It's built to show how the pieces of a real app fit together (database design, a layered backend, and a frontend that talks to an API). It isn't a production finance product, so please don't put real financial data in it.
+
+ValueTrack is a full-stack web app. It started as "let me just calculate an EMI properly" and kept growing. Now it covers four things:
 
 - **Loans and EMIs.** Enter a loan and get the full month-by-month amortization schedule. Every rupee is calculated with `Decimal`, and the last month is adjusted so the balance lands exactly on ₹0.00.
 - **Expenses.** Log what you spend, mark fixed costs (rent, subscriptions), set a monthly budget and see how close you are to it.
@@ -22,6 +28,20 @@ ValueTrack is a full-stack web app I built as my 2nd-year B.Tech mini project. I
 There's also an **admin panel**. Admins can manage insurance plans, expense categories and system settings, and see the user list.
 
 If you want the story of how it works under the hood, read [HOW_IT_WORKS.md](HOW_IT_WORKS.md). For the step-by-step request flow, read [FLOW.md](FLOW.md).
+
+## What makes it different
+
+There are plenty of EMI calculators and expense trackers out there. Here's what I think sets this one apart:
+
+- **Loans, spending and insurance in one place.** Most apps do one of these. ValueTrack puts your EMIs, your monthly budget and your insurance choice side by side on one dashboard, because in real life they all come out of the same salary.
+- **The whole EMI schedule, not just one number.** Most calculators stop at "your EMI is ₹10,258". ValueTrack shows every month: how much is interest, how much actually reduces the loan, and what's left.
+- **Money math that adds up to the paisa.** Every calculation uses `Decimal` with bank-style rounding, and the last month is adjusted so the loan closes at exactly ₹0.00. No `-0.03` left over at the end.
+- **Insurance recommendations that explain themselves.** You don't just get a score. Each plan comes with plain reasons like "Under budget: ₹900/mo" or "NO Maternity Cover", so you can see why it ranked where it did.
+- **Built around what people actually ask.** The insurance filters are critical illness, maternity and accident cover, plus age and a monthly budget. Those are the questions families in India really ask when picking a health plan, rather than generic policy jargon.
+- **Rules you can read, not a black box.** The scoring is plain rule-based logic with fixed weights, all in one file. Anyone can check it, question it, or change it.
+- **Made for India.** Rupees everywhere, Indian-style loan amounts, and sample plans modelled on the kind of health covers sold here.
+- **Runs with almost no setup.** One Flask server serves both the API and the pages. There's no build step, no Node and no Docker: just Python and MySQL.
+- **An admin panel included.** Plans, categories and settings can be managed from the browser instead of editing the database by hand.
 
 ## Tech stack
 
