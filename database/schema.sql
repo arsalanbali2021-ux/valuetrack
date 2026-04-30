@@ -90,8 +90,25 @@ CREATE TABLE IF NOT EXISTS insurance (
     has_accident         TINYINT(1)     DEFAULT 0,
     co_pay_percentage    INT            DEFAULT 0,
     monthly_premium      DECIMAL(12,2)  NOT NULL,
+    irdai_uin            VARCHAR(60)    DEFAULT NULL, -- links the plan to its IRDAI-registered product (optional)
     created_at           TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_insurance_coverage (coverage_amount)
+    INDEX idx_insurance_coverage (coverage_amount),
+    INDEX idx_insurance_uin (irdai_uin)
+) ENGINE=InnoDB;
+
+-- IRDAI product register: imported by an admin from the public list on irdai.gov.in
+-- (insurer, product name, UIN). It has no premiums or cover details, so plans are still created in the insurance table.
+CREATE TABLE IF NOT EXISTS irdai_products (
+    product_id     INT PRIMARY KEY AUTO_INCREMENT,
+    uin            VARCHAR(60)  NOT NULL UNIQUE, -- Unique Identification Number given by IRDAI
+    insurer_name   VARCHAR(200) NOT NULL,
+    product_name   VARCHAR(255) NOT NULL,
+    product_type   VARCHAR(60),
+    financial_year VARCHAR(20),
+    approval_date  DATE,
+    is_archived    TINYINT(1)   DEFAULT 0,
+    imported_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_irdai_insurer (insurer_name)
 ) ENGINE=InnoDB;
 
 -- Insurance request (user submits matching query) 

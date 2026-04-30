@@ -1,6 +1,6 @@
 """
 ValueTrack — SQLAlchemy ORM Models
-Maps all 7 database tables to Python classes.
+Maps all database tables to Python classes.
 """
 from sqlalchemy import (
     Column, Integer, String, Text, Date, TIMESTAMP, DECIMAL,
@@ -143,6 +143,7 @@ class Insurance(Base):
     has_accident = Column(SmallInteger, default=0)
     co_pay_percentage = Column(Integer, default=0)
     monthly_premium = Column(DECIMAL(12, 2), nullable=False)
+    irdai_uin = Column(String(60), nullable=True, index=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
 
     def to_dict(self):
@@ -158,7 +159,36 @@ class Insurance(Base):
             'has_accident': bool(self.has_accident),
             'co_pay_percentage': self.co_pay_percentage,
             'monthly_premium': float(self.monthly_premium),
+            'irdai_uin': self.irdai_uin,
             'created_at': str(self.created_at) if self.created_at else None
+        }
+
+
+class IrdaiProduct(Base):
+    """A product from IRDAI's public register of approved health insurance products."""
+    __tablename__ = 'irdai_products'
+
+    product_id = Column(Integer, primary_key=True, autoincrement=True)
+    uin = Column(String(60), nullable=False, unique=True)
+    insurer_name = Column(String(200), nullable=False, index=True)
+    product_name = Column(String(255), nullable=False)
+    product_type = Column(String(60))
+    financial_year = Column(String(20))
+    approval_date = Column(Date)
+    is_archived = Column(SmallInteger, default=0)
+    imported_at = Column(TIMESTAMP, server_default=func.now())
+
+    def to_dict(self):
+        return {
+            'product_id': self.product_id,
+            'uin': self.uin,
+            'insurer_name': self.insurer_name,
+            'product_name': self.product_name,
+            'product_type': self.product_type,
+            'financial_year': self.financial_year,
+            'approval_date': str(self.approval_date) if self.approval_date else None,
+            'is_archived': bool(self.is_archived),
+            'imported_at': str(self.imported_at) if self.imported_at else None
         }
 
 
