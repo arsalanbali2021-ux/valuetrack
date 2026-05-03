@@ -1,11 +1,13 @@
 """
 ValueTrack — Admin Routes
-CRUD for insurance plans, system settings, and expense categories.
+CRUD for insurance plans, system settings, and expense categories,
+plus the IRDAI product catalogue import.
 All routes require admin role.
 """
 import traceback
 from flask import Blueprint, request, jsonify
-from models import User, Insurance, SystemSetting, ExpenseCategory
+from models import User, Insurance, SystemSetting, ExpenseCategory, IrdaiProduct
+from services.irdai_import import import_products
 from db import db_session
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
@@ -37,6 +39,16 @@ def _require_admin():
         return None, (jsonify({'status': 'error', 'message': 'Access denied. Admin role required.'}), 403)
 
     return user, None
+
+
+def _clean_uin(value):
+    """Empty -> None. Otherwise the UIN must already be in the IRDAI catalogue."""
+    uin = ''.join(str(value or '').split()).upper()
+    if not uin:
+        return None
+    if not db_session.query(IrdaiProduct).filter(IrdaiProduct.uin == uin).first():
+        raise ValueError(f'UIN {uin} is not in the IRDAI catalogue. Import the IRDAI list first.')
+    return uin
 
 
 # =====================================================================
@@ -77,7 +89,8 @@ def create_insurance():
             has_maternity=1 if data.get('has_maternity') else 0,
             has_accident=1 if data.get('has_accident') else 0,
             co_pay_percentage=int(data.get('co_pay_percentage', 0)),
-            monthly_premium=float(data['monthly_premium'])
+            monthly_premium=float(data['monthly_premium']),
+            irdai_uin=_clean_uin(data.get('irdai_uin'))
         )
         db_session.add(plan)
         db_session.commit()
@@ -112,6 +125,7 @@ def update_insurance(plan_id):
         if 'has_accident' in data: plan.has_accident = 1 if data['has_accident'] else 0
         if 'co_pay_percentage' in data: plan.co_pay_percentage = int(data['co_pay_percentage'])
         if 'monthly_premium' in data: plan.monthly_premium = float(data['monthly_premium'])
+        if 'irdai_uin' in data: plan.irdai_uin = _clean_uin(data['irdai_uin'])
 
         db_session.commit()
         db_session.refresh(plan)
@@ -256,3 +270,86 @@ def list_users():
     if error: return error
     users = db_session.query(User).order_by(User.user_id).all()
     return jsonify({'status': 'success', 'message': 'Fetched users', 'data': [u.to_dict() for u in users]}), 200
+
+
+# =====================================================================
+# IRDAI PRODUCT CATALOGUE
+# Source: https://irdai.gov.in/health-insurance-products
+# The site doesn't allow bots (robots.txt), so we never fetch it ourselves.
+# The admin saves/copies the table in a browser and uploads it here.
+# =====================================================================
+
+@admin_bp.route('/irdai/import', methods=['POST'])
+def irdai_import():
+    _, error = _require_admin()
+    if error: return error
+
+    text = None
+    upload = request.files.get('file')
+    if upload and upload.filename:
+        raw = upload.read()
+        for encoding in ('utf-8-sig', 'cp1252', 'latin-1'):
+            try:
+                text = raw.decode(encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+    else:
+        data = request.get_json(silent=True) or {}
+        text = data.get('text')
+
+    if not text:
+        return jsonify({'status': 'error', 'message': 'Upload a file or paste the IRDAI table'}), 400
+
+    try:
+        summary = import_products(text)
+        msg = f"Imported {summary['added']} new and updated {summary['updated']} IRDAI products"
+        return jsonify({'status': 'success', 'message': msg, 'data': summary}), 200
+    except ValueError as e:
+        db_session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    except Exception as e:
+        db_session.rollback()
+        traceback.print_exc()
+        return jsonify({'status': 'error', 'message': f'Import failed: {str(e)}'}), 500
+
+
+@admin_bp.route('/irdai/products', methods=['GET'])
+def irdai_products():
+    _, error = _require_admin()
+    if error: return error
+
+    q = (request.args.get('q') or '').strip()
+    product_type = (request.args.get('type') or '').strip()
+    limit = min(max(request.args.get('limit', 25, type=int), 1), 200)
+    offset = max(request.args.get('offset', 0, type=int), 0)
+
+    query = db_session.query(IrdaiProduct)
+    if q:
+        like = f'%{q}%'
+        query = query.filter((IrdaiProduct.product_name.like(like)) |
+                             (IrdaiProduct.insurer_name.like(like)) |
+                             (IrdaiProduct.uin.like(like)))
+    if product_type:
+        query = query.filter(IrdaiProduct.product_type == product_type)
+
+    total = query.count()
+    items = query.order_by(IrdaiProduct.approval_date.desc(), IrdaiProduct.product_id.desc())                  .offset(offset).limit(limit).all()
+
+    # Which of these products already have a ValueTrack plan?
+    uins = [p.uin for p in items]
+    linked = {}
+    if uins:
+        for plan in db_session.query(Insurance).filter(Insurance.irdai_uin.in_(uins)).all():
+            linked.setdefault(plan.irdai_uin, []).append(plan.insurance_id)
+
+    types = [t for (t,) in db_session.query(IrdaiProduct.product_type).distinct().all() if t]
+
+    data = {
+        'items': [dict(p.to_dict(), linked_plan_ids=linked.get(p.uin, [])) for p in items],
+        'total': total,
+        'limit': limit,
+        'offset': offset,
+        'types': sorted(types),
+    }
+    return jsonify({'status': 'success', 'message': 'Fetched IRDAI products', 'data': data}), 200
