@@ -2,7 +2,7 @@
 ValueTrack — Insurance Recommendations Service
 Scoring logic to match user profile against available insurance plans using new schema.
 """
-from models import Insurance, InsuranceRequest, InsuranceResult
+from models import Insurance, InsuranceRequest, InsuranceResult, IrdaiProduct
 from db import db_session
 from sqlalchemy import func as sql_func
 
@@ -63,14 +63,70 @@ def _calculate_score(policy: Insurance, age: int,
     return round(score, 4), explanations
 
 
+SOURCES = ('all', 'irdai')
+
+
+def _irdai_lookup(policies) -> dict:
+    """Map UIN -> IrdaiProduct for the policies that are linked to one."""
+    uins = {p.irdai_uin for p in policies if getattr(p, 'irdai_uin', None)}
+    if not uins:
+        return {}
+    rows = db_session.query(IrdaiProduct).filter(IrdaiProduct.uin.in_(uins)).all()
+    return {r.uin: r for r in rows}
+
+
+def _irdai_explanation(policy, irdai_map):
+    product = irdai_map.get(policy.irdai_uin) if getattr(policy, 'irdai_uin', None) else None
+    if not product:
+        return None
+    if product.is_archived:
+        return {'icon': 'warning', 'text': f'IRDAI: product archived (UIN {product.uin})'}
+    return {'icon': 'verified', 'text': f'IRDAI-registered · UIN {product.uin}'}
+
+
+def _result_dict(policy, score, rank, explanations, irdai_map):
+    product = irdai_map.get(policy.irdai_uin) if policy and getattr(policy, 'irdai_uin', None) else None
+    return {
+        'insurance_id': policy.insurance_id if policy else None,
+        'score': score,
+        'rank': rank,
+        'type': policy.plan_type if policy else 'Unknown',
+        'plan_name': policy.plan_name if policy else 'Unknown',
+        'premium': float(policy.monthly_premium) if policy else 0,
+        'coverage': float(policy.coverage_amount) if policy else 0,
+        'co_pay': policy.co_pay_percentage if policy else 0,
+        'has_maternity': bool(policy.has_maternity) if policy else False,
+        'has_critical_illness': bool(policy.has_critical_illness) if policy else False,
+        'has_accident': bool(policy.has_accident) if policy else False,
+        'min_age': policy.min_age if policy else 0,
+        'max_age': policy.max_age if policy else 0,
+        'explanations': explanations,
+        'irdai': {
+            'uin': product.uin,
+            'insurer': product.insurer_name,
+            'product_name': product.product_name,
+            'product_type': product.product_type,
+            'approval_date': str(product.approval_date) if product.approval_date else None,
+            'is_archived': bool(product.is_archived),
+        } if product else None,
+    }
+
+
 def score_insurance(user_id: int, age: int, needs_critical_illness: bool,
                     needs_maternity: bool, needs_accident: bool,
-                    monthly_budget: float) -> dict:
-    """Score all insurance policies and persist top 5 results."""
+                    monthly_budget: float, source: str = 'all') -> dict:
+    """
+    Score insurance policies and persist the top 5 results.
+    source='all'   -> every plan in the insurance table
+    source='irdai' -> only plans linked to a current (non-archived) IRDAI product
+    """
     if age <= 0 or age > 120:
         raise ValueError("Age must be between 1 and 120")
     if monthly_budget < 0:
         raise ValueError("Budget cannot be negative")
+    source = (source or 'all').lower()
+    if source not in SOURCES:
+        raise ValueError("source must be 'all' or 'irdai'")
 
     request = InsuranceRequest(
         user_id=user_id,
@@ -83,12 +139,23 @@ def score_insurance(user_id: int, age: int, needs_critical_illness: bool,
     db_session.add(request)
     db_session.flush()
 
-    policies = db_session.query(Insurance).all()
+    query = db_session.query(Insurance)
+    if source == 'irdai':
+        query = query.join(IrdaiProduct, IrdaiProduct.uin == Insurance.irdai_uin) \
+                     .filter(IrdaiProduct.is_archived == 0)
+    policies = query.all()
+
     if not policies:
         db_session.commit()
-        return {'request_id': request.request_id, 'top': [], 'reason': 'no policies in database'}
+        if source == 'irdai':
+            reason = ('No IRDAI-registered plans yet. An admin can import the IRDAI product list '
+                      'and link plans to it from the admin panel.')
+        else:
+            reason = 'no policies in database'
+        return {'request_id': request.request_id, 'source': source, 'top': [], 'reason': reason}
 
     max_coverage = float(db_session.query(sql_func.max(Insurance.coverage_amount)).scalar() or 0)
+    irdai_map = _irdai_lookup(policies)
 
     scored = []
     for policy in policies:
@@ -102,70 +169,55 @@ def score_insurance(user_id: int, age: int, needs_critical_illness: bool,
 
     if not scored:
         db_session.commit()
-        return {'request_id': request.request_id, 'top': [], 'reason': 'no eligible plans fit your criteria'}
+        return {'request_id': request.request_id, 'source': source, 'top': [],
+                'reason': 'no eligible plans fit your criteria'}
 
-    top5 = scored[:5]
     results = []
-    for rank, (policy, score, explanations) in enumerate(top5, start=1):
-        result = InsuranceResult(
+    for rank, (policy, score, explanations) in enumerate(scored[:5], start=1):
+        db_session.add(InsuranceResult(
             request_id=request.request_id,
             insurance_id=policy.insurance_id,
             rank_score=score,
             rank_position=rank
-        )
-        db_session.add(result)
-        results.append({
-            'insurance_id': policy.insurance_id,
-            'score': score,
-            'rank': rank,
-            'type': policy.plan_type,
-            'plan_name': policy.plan_name,
-            'premium': float(policy.monthly_premium),
-            'coverage': float(policy.coverage_amount),
-            'co_pay': policy.co_pay_percentage,
-            'has_maternity': bool(policy.has_maternity),
-            'has_critical_illness': bool(policy.has_critical_illness),
-            'has_accident': bool(policy.has_accident),
-            'min_age': policy.min_age,
-            'max_age': policy.max_age,
-            'explanations': explanations
-        })
+        ))
+        badge = _irdai_explanation(policy, irdai_map)
+        if badge:
+            explanations = [badge] + explanations
+        results.append(_result_dict(policy, score, rank, explanations, irdai_map))
 
     db_session.commit()
-    return {'request_id': request.request_id, 'top': results}
+    return {'request_id': request.request_id, 'source': source, 'top': results}
+
 
 def get_results(request_id: int) -> dict:
     """Fetch persisted insurance ranking."""
     request = db_session.query(InsuranceRequest).filter(InsuranceRequest.request_id == request_id).first()
-    if not request: raise ValueError("Request not found")
+    if not request:
+        raise ValueError("Request not found")
 
-    results = db_session.query(InsuranceResult).filter(InsuranceResult.request_id == request_id).order_by(InsuranceResult.rank_position).all()
+    results = db_session.query(InsuranceResult).filter(
+        InsuranceResult.request_id == request_id).order_by(InsuranceResult.rank_position).all()
     max_coverage = float(db_session.query(sql_func.max(Insurance.coverage_amount)).scalar() or 0)
+
+    policies = {}
+    for r in results:
+        policies[r.insurance_id] = db_session.query(Insurance).filter(
+            Insurance.insurance_id == r.insurance_id).first()
+    irdai_map = _irdai_lookup([p for p in policies.values() if p])
 
     top = []
     for r in results:
-        policy = db_session.query(Insurance).filter(Insurance.insurance_id == r.insurance_id).first()
+        policy = policies.get(r.insurance_id)
         explanations = []
         if policy:
             _, explanations = _calculate_score(policy, request.age, bool(request.needs_critical_illness),
                                                bool(request.needs_maternity), bool(request.needs_accident),
                                                float(request.monthly_budget), max_coverage)
-
-        top.append({
-            'insurance_id': r.insurance_id,
-            'score': float(r.rank_score),
-            'rank': r.rank_position,
-            'type': policy.plan_type if policy else 'Unknown',
-            'plan_name': policy.plan_name if policy else 'Unknown',
-            'premium': float(policy.monthly_premium) if policy else 0,
-            'coverage': float(policy.coverage_amount) if policy else 0,
-            'co_pay': policy.co_pay_percentage if policy else 0,
-            'has_maternity': bool(policy.has_maternity) if policy else False,
-            'has_critical_illness': bool(policy.has_critical_illness) if policy else False,
-            'has_accident': bool(policy.has_accident) if policy else False,
-            'min_age': policy.min_age if policy else 0,
-            'max_age': policy.max_age if policy else 0,
-            'explanations': explanations
-        })
+            badge = _irdai_explanation(policy, irdai_map)
+            if badge:
+                explanations = [badge] + explanations
+        item = _result_dict(policy, float(r.rank_score), r.rank_position, explanations, irdai_map)
+        item['insurance_id'] = r.insurance_id
+        top.append(item)
 
     return {'request_id': request_id, 'top': top}
