@@ -1,6 +1,6 @@
 /**
  * ValueTrack — Admin Panel Logic
- * Insurance CRUD, Expense Categories, Users list.
+ * Insurance CRUD, IRDAI catalogue import, Expense Categories, Users list.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         insuranceTableBody.innerHTML = plans.map(p => `
             <tr>
                 <td>${p.insurance_id}</td>
-                <td><strong>${p.plan_name}</strong></td>
+                <td><strong>${escapeHtml(p.plan_name)}</strong>${p.irdai_uin ? `<br><span class="badge badge-info" title="IRDAI UIN" style="margin-top:4px;">${escapeHtml(p.irdai_uin)}</span>` : ''}</td>
                 <td>${p.plan_type}</td>
                 <td>${p.min_age}–${p.max_age}</td>
                 <td style="text-align:right;">₹${Number(p.monthly_premium).toLocaleString()}</td>
@@ -114,6 +114,24 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('planCritical').checked = plan.has_critical_illness;
         document.getElementById('planMaternity').checked = plan.has_maternity;
         document.getElementById('planAccident').checked = plan.has_accident;
+        document.getElementById('planUin').value = plan.irdai_uin || '';
+        openModal(planModal);
+    };
+
+    // Start a new plan pre-filled from an IRDAI product
+    window.createPlanFromIrdai = function(uin) {
+        const product = irdaiCache.find(p => p.uin === uin);
+        if (!product) return;
+
+        planModalTitle.textContent = 'Create Plan from IRDAI Product';
+        planForm.reset();
+        document.getElementById('planId').value = '';
+        document.getElementById('planName').value = product.product_name;
+        document.getElementById('planUin').value = product.uin;
+        const typeSelect = document.getElementById('planType');
+        if ([...typeSelect.options].some(o => o.value === product.product_type)) {
+            typeSelect.value = product.product_type;
+        }
         openModal(planModal);
     };
 
@@ -134,7 +152,8 @@ document.addEventListener('DOMContentLoaded', () => {
             co_pay_percentage: parseInt(document.getElementById('planCoPay').value) || 0,
             has_critical_illness: document.getElementById('planCritical').checked,
             has_maternity: document.getElementById('planMaternity').checked,
-            has_accident: document.getElementById('planAccident').checked
+            has_accident: document.getElementById('planAccident').checked,
+            irdai_uin: document.getElementById('planUin').value.trim()
         };
 
         showLoading(btn);
@@ -148,6 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             closeModal(planModal);
             await loadInsuranceWithCache();
+            if (data.irdai_uin) await loadIrdai();
         } catch (error) {
             showAlert(insuranceAlert, error.message, 'danger');
         } finally {
@@ -167,6 +187,122 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     };
+
+    // ====================================================================
+    // IRDAI CATALOGUE
+    // ====================================================================
+    const irdaiAlert = document.getElementById('irdaiAlert');
+    const irdaiTableBody = document.getElementById('irdaiTableBody');
+    const irdaiSearch = document.getElementById('irdaiSearch');
+    const irdaiType = document.getElementById('irdaiType');
+    const irdaiCount = document.getElementById('irdaiCount');
+    const irdaiPrev = document.getElementById('irdaiPrev');
+    const irdaiNext = document.getElementById('irdaiNext');
+    const IRDAI_PAGE = 25;
+    let irdaiCache = [];
+    let irdaiOffset = 0;
+    let irdaiTotal = 0;
+
+    async function loadIrdai() {
+        try {
+            const data = await AdminAPI.getIrdaiProducts(user.user_id, {
+                q: irdaiSearch.value.trim(),
+                type: irdaiType.value,
+                limit: IRDAI_PAGE,
+                offset: irdaiOffset
+            });
+            irdaiCache = data.items;
+            irdaiTotal = data.total;
+
+            // Keep the type filter in sync with what's been imported
+            const current = irdaiType.value;
+            irdaiType.innerHTML = '<option value="">All types</option>' +
+                data.types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+            irdaiType.value = current;
+
+            renderIrdai();
+        } catch (error) {
+            irdaiTableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger" style="padding:2rem;">${escapeHtml(error.message)}</td></tr>`;
+        }
+    }
+
+    function renderIrdai() {
+        const from = irdaiTotal ? irdaiOffset + 1 : 0;
+        const to = irdaiOffset + irdaiCache.length;
+        irdaiCount.textContent = `${from}–${to} of ${irdaiTotal} products`;
+        irdaiPrev.disabled = irdaiOffset === 0;
+        irdaiNext.disabled = to >= irdaiTotal;
+
+        if (!irdaiCache.length) {
+            irdaiTableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding:2rem;">${
+                irdaiSearch.value || irdaiType.value
+                    ? 'No products match your search.'
+                    : 'No IRDAI products yet. Import the list above to get started.'
+            }</td></tr>`;
+            return;
+        }
+
+        irdaiTableBody.innerHTML = irdaiCache.map(p => `
+            <tr>
+                <td><code style="font-size:0.8rem;">${escapeHtml(p.uin)}</code></td>
+                <td><strong>${escapeHtml(p.product_name)}</strong></td>
+                <td class="text-sm">${escapeHtml(p.insurer_name)}</td>
+                <td>${escapeHtml(p.product_type || '—')}</td>
+                <td class="text-muted" style="white-space:nowrap;">${p.approval_date ? p.approval_date.split('-').reverse().join('-') : '—'}</td>
+                <td>${p.is_archived
+                    ? '<span class="badge badge-neutral">Archived</span>'
+                    : '<span class="badge badge-success">Active</span>'}</td>
+                <td>${p.linked_plan_ids.length
+                    ? p.linked_plan_ids.map(id => `<span class="badge badge-primary">Plan #${id}</span>`).join(' ')
+                    : `<button class="btn btn-outline btn-sm" onclick="createPlanFromIrdai('${escapeHtml(p.uin)}')">
+                           <span class="material-symbols-outlined" style="font-size:1rem;">add</span> Create plan
+                       </button>`}</td>
+            </tr>
+        `).join('');
+    }
+
+    document.getElementById('irdaiImportForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('irdaiImportBtn');
+        const fileInput = document.getElementById('irdaiFile');
+        const textInput = document.getElementById('irdaiText');
+        const file = fileInput.files[0];
+        const text = textInput.value.trim();
+
+        if (!file && !text) {
+            showAlert(irdaiAlert, 'Choose a saved IRDAI page / CSV, or paste the copied table.', 'danger');
+            return;
+        }
+
+        showLoading(btn);
+        try {
+            const summary = await AdminAPI.importIrdai(file || text, user.user_id);
+            let msg = `Found ${summary.rows_found} row${summary.rows_found === 1 ? '' : 's'}: ${summary.added} new, ${summary.updated} updated` +
+                      (summary.skipped ? `, ${summary.skipped} skipped` : '') +
+                      `. Catalogue now has ${summary.total_in_catalogue} products.`;
+            if (summary.errors.length) {
+                msg += '<br><span class="text-xs">' + summary.errors.map(escapeHtml).join('<br>') + '</span>';
+            }
+            showAlert(irdaiAlert, msg, summary.skipped ? 'info' : 'success');
+            fileInput.value = '';
+            textInput.value = '';
+            irdaiOffset = 0;
+            await loadIrdai();
+        } catch (error) {
+            showAlert(irdaiAlert, escapeHtml(error.message), 'danger');
+        } finally {
+            hideLoading(btn);
+        }
+    });
+
+    let searchTimer = null;
+    irdaiSearch.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => { irdaiOffset = 0; loadIrdai(); }, 300);
+    });
+    irdaiType.addEventListener('change', () => { irdaiOffset = 0; loadIrdai(); });
+    irdaiPrev.addEventListener('click', () => { irdaiOffset = Math.max(0, irdaiOffset - IRDAI_PAGE); loadIrdai(); });
+    irdaiNext.addEventListener('click', () => { irdaiOffset += IRDAI_PAGE; loadIrdai(); });
 
     // ====================================================================
     // EXPENSE CATEGORIES
@@ -339,6 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // INITIAL LOAD
     // ====================================================================
     loadInsuranceWithCache();
+    loadIrdai();
     loadCategories();
     loadUsers();
 });

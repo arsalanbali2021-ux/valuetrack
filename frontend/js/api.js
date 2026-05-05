@@ -111,7 +111,8 @@ const ExpensesAPI = {
 
 // ---- Insurance API ----
 const InsuranceAPI = {
-    getRecommendation: (userId, age, monthlyBudget, needsCriticalIllness, needsMaternity, needsAccident) =>
+    // source: 'all' (every plan) or 'irdai' (only plans linked to an IRDAI-registered product)
+    getRecommendation: (userId, age, monthlyBudget, needsCriticalIllness, needsMaternity, needsAccident, source = 'all') =>
         apiCall('/insurance/request', {
             method: 'POST',
             body: JSON.stringify({
@@ -120,7 +121,8 @@ const InsuranceAPI = {
                 monthly_budget: monthlyBudget,
                 needs_critical_illness: needsCriticalIllness,
                 needs_maternity: needsMaternity,
-                needs_accident: needsAccident
+                needs_accident: needsAccident,
+                source: source
             })
         }),
 
@@ -190,8 +192,36 @@ const AdminAPI = {
 
     // Users
     getUsers: (userId) =>
-        apiCall(`/admin/users?user_id=${userId}`)
+        apiCall(`/admin/users?user_id=${userId}`),
+
+    // IRDAI catalogue — pass a File (saved page / CSV) or a string (pasted rows)
+    importIrdai: (fileOrText, userId) => {
+        if (fileOrText instanceof File) {
+            const form = new FormData();
+            form.append('file', fileOrText);
+            return apiCall(`/admin/irdai/import?user_id=${userId}`, { method: 'POST', body: form });
+        }
+        return apiCall(`/admin/irdai/import?user_id=${userId}`, {
+            method: 'POST',
+            body: JSON.stringify({ text: fileOrText })
+        });
+    },
+
+    getIrdaiProducts: (userId, { q = '', type = '', limit = 25, offset = 0 } = {}) => {
+        const params = new URLSearchParams({ user_id: userId, q, type, limit, offset });
+        return apiCall(`/admin/irdai/products?${params}`);
+    }
 };
+
+// ---- Utility: escape text before putting it into HTML ----
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
 // ---- Utility: check admin role ----
 function isAdmin() {

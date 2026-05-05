@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ValueTrack — Admin Panel</title>
-    <meta name="description" content="Admin panel for managing insurance plans, scoring weights, and expense categories.">
+    <meta name="description" content="Admin panel for managing insurance plans, the IRDAI catalogue, scoring weights, and expense categories.">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -83,6 +83,10 @@
                             <span class="material-symbols-outlined">shield</span>
                             Insurance Plans
                         </button>
+                        <button class="admin-tab-btn" data-tab="irdai">
+                            <span class="material-symbols-outlined">verified</span>
+                            IRDAI Catalogue
+                        </button>
                         <button class="admin-tab-btn" data-tab="categories">
                             <span class="material-symbols-outlined">category</span>
                             Expense Categories
@@ -131,6 +135,81 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: IRDAI Catalogue -->
+                    <div id="tab-irdai" class="admin-tab-panel">
+                        <div class="mb-6">
+                            <h2>IRDAI Product Catalogue</h2>
+                            <p class="text-sm text-muted mt-1">Import IRDAI's public list of approved health insurance products, then link your plans to a real UIN. Users can then pick "IRDAI-registered plans only" on the Insurance page.</p>
+                        </div>
+
+                        <div id="irdaiAlert"></div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;" class="mb-6">
+                            <div class="card-flat" style="padding:1.25rem;">
+                                <h3 class="mb-4 flex items-center gap-2" style="font-size:1rem;">
+                                    <span class="material-symbols-outlined text-primary">help</span>
+                                    How to get the list
+                                </h3>
+                                <ol class="text-sm" style="padding-left:1.25rem; display:flex; flex-direction:column; gap:0.5rem; color:var(--color-text-secondary);">
+                                    <li>Open <a href="https://irdai.gov.in/health-insurance-products" target="_blank" rel="noopener">irdai.gov.in/health-insurance-products</a> in your browser.</li>
+                                    <li>Filter by financial year or insurer if you like, and show as many rows per page as it allows.</li>
+                                    <li>Either save the page (<strong>Ctrl+S</strong>, "Webpage, HTML only"), or select the table rows and copy them.</li>
+                                    <li>Upload the saved file (or a CSV), or paste the copied rows here, then click <strong>Import</strong>.</li>
+                                </ol>
+                                <p class="form-help" style="margin-top:0.75rem;">IRDAI's site doesn't allow bots, so ValueTrack never downloads it by itself. You bring the file, and it does the rest. Re-importing is safe: products are matched by UIN and updated.</p>
+                            </div>
+                            <form id="irdaiImportForm" class="card-flat" style="padding:1.25rem; display:flex; flex-direction:column; gap:1rem;">
+                                <div class="form-group" style="margin:0;">
+                                    <label class="form-label" for="irdaiFile">Saved page or CSV</label>
+                                    <input class="form-input" type="file" id="irdaiFile" accept=".html,.htm,.csv,.tsv,.txt">
+                                </div>
+                                <div class="form-group" style="margin:0;">
+                                    <label class="form-label" for="irdaiText">...or paste the copied table</label>
+                                    <textarea class="form-textarea" id="irdaiText" rows="5" placeholder="Archive / Non Archive, Financial Year, Name of the Insurer, UIN, Product Name, Date of Approval, ..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary" id="irdaiImportBtn">
+                                    <span class="material-symbols-outlined" style="font-size:1.125rem;">upload</span>
+                                    Import
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-4 mb-4" style="flex-wrap:wrap;">
+                            <div class="flex items-center gap-4" style="flex-wrap:wrap;">
+                                <input class="form-input" type="search" id="irdaiSearch" placeholder="Search product, insurer or UIN" style="min-width:280px;">
+                                <select class="form-select" id="irdaiType" style="min-width:160px;">
+                                    <option value="">All types</option>
+                                </select>
+                            </div>
+                            <span class="text-sm text-muted" id="irdaiCount">-</span>
+                        </div>
+
+                        <div class="card-flat">
+                            <div class="table-wrap">
+                                <table id="irdaiTable">
+                                    <thead>
+                                        <tr>
+                                            <th>UIN</th>
+                                            <th>Product</th>
+                                            <th>Insurer</th>
+                                            <th>Type</th>
+                                            <th>Approved</th>
+                                            <th>Status</th>
+                                            <th>ValueTrack plan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="irdaiTableBody">
+                                        <tr><td colspan="7" class="text-center text-muted" style="padding:2rem;">Loading...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="pagination" style="margin-top:1rem;">
+                            <button type="button" id="irdaiPrev">Previous</button>
+                            <button type="button" id="irdaiNext">Next</button>
                         </div>
                     </div>
 
@@ -220,6 +299,10 @@
                         <label class="form-label" for="planType">Plan Type</label>
                         <select class="form-select" id="planType" required>
                             <option value="">Select Type</option>
+                            <option value="Individual">Individual</option>
+                            <option value="Family Floater">Family Floater</option>
+                            <option value="Young Adult">Young Adult</option>
+                            <option value="Senior Citizen">Senior Citizen</option>
                             <option value="Health">Health</option>
                             <option value="Critical Illness">Critical Illness</option>
                             <option value="Accident">Accident</option>
@@ -253,7 +336,11 @@
                         <label class="form-label" for="planCoPay">Co-Pay (%)</label>
                         <input class="form-input" type="number" id="planCoPay" min="0" max="100" placeholder="20">
                     </div>
-                    <div class="form-group"></div>
+                    <div class="form-group">
+                        <label class="form-label" for="planUin">IRDAI UIN (optional)</label>
+                        <input class="form-input" type="text" id="planUin" placeholder="e.g. BAJHLIP23020V012223">
+                        <p class="form-help">Must exist in the IRDAI Catalogue tab.</p>
+                    </div>
                 </div>
                 <div style="display:flex; gap:2rem; flex-wrap:wrap; padding:0.5rem 0;">
                     <div class="toggle-wrap">
