@@ -99,6 +99,14 @@
                                                 placeholder="e.g. 1500" required>
                                         </div>
                                     </div>
+                                    <div>
+                                        <label class="form-label" for="planSource">Plan Source</label>
+                                        <select class="form-select" id="planSource">
+                                            <option value="all">All plans in ValueTrack</option>
+                                            <option value="irdai">IRDAI-registered plans only</option>
+                                        </select>
+                                        <p class="form-help">IRDAI-registered plans are linked to a real product UIN from IRDAI's public list of approved health insurance products.</p>
+                                    </div>
                                     <div style="display:flex; flex-direction:column; gap:1rem; margin-top:0.5rem;">
                                         <span class="form-label" style="margin-bottom:0;">Coverage Needs</span>
                                         <div class="toggle-wrap" style="padding:0.75rem 1rem; margin:0;">
@@ -154,7 +162,7 @@
                         <div>
                             <div id="resultsSection" class="hidden" style="display:flex; flex-direction:column; gap:1.5rem;">
                                 <div class="flex items-center justify-between">
-                                    <p class="text-sm text-muted">Showing matched plans for you</p>
+                                    <p class="text-sm text-muted" id="resultsCaption">Showing matched plans for you</p>
                                 </div>
                                 <div id="resultsList" class="flex flex-col gap-3"></div>
                             </div>

@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const needsCriticalIllness = document.getElementById('needsCriticalIllness').checked;
         const needsMaternity = document.getElementById('needsMaternity').checked;
         const needsAccident = document.getElementById('needsAccident').checked;
+        const source = document.getElementById('planSource').value;
 
         // Validation
         if (!age || age < 1 || age > 120) {
@@ -43,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showLoading(btn);
         try {
-            const result = await InsuranceAPI.getRecommendation(user.user_id, age, budget, needsCriticalIllness, needsMaternity, needsAccident);
+            const result = await InsuranceAPI.getRecommendation(user.user_id, age, budget, needsCriticalIllness, needsMaternity, needsAccident, source);
 
             if (!result.top || result.top.length === 0) {
                 showAlert(insuranceAlert,
@@ -57,6 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 `Found ${result.top.length} matching plans! (Request ID: ${result.request_id})`,
                 'success');
 
+            document.getElementById('resultsCaption').textContent = source === 'irdai'
+                ? 'Showing IRDAI-registered plans matched to you'
+                : 'Showing matched plans for you';
             renderResults(result.top);
             resultsSection.classList.remove('hidden');
             resultsSection.style.display = '';
@@ -77,8 +81,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
                     <div class="rank-number ${rankColors[idx]}">${plan.rank}</div>
                     <div class="rank-info" style="flex:1;">
-                        <h4>${plan.plan_name} <span class="text-muted" style="font-weight: 400; font-size: 0.9em;">| ₹${plan.premium.toLocaleString()}/mo</span></h4>
-                        <p style="margin-bottom: 0.5rem;">${plan.type}</p>
+                        <h4>${escapeHtml(plan.plan_name)} <span class="text-muted" style="font-weight: 400; font-size: 0.9em;">| ₹${plan.premium.toLocaleString()}/mo</span></h4>
+                        <p style="margin-bottom: 0.5rem;">${escapeHtml(plan.type)}${plan.irdai
+                            ? ` · <span class="text-muted">${escapeHtml(plan.irdai.insurer)}</span>`
+                            : ''}</p>
                         
                         <!-- Eligibility Criteria Columns (Requested by User) -->
                         <div style="display:inline-flex; gap:1.5rem; background: var(--border-color); padding: 4px 12px; border-radius: 4px; font-size: 0.85rem; margin-top: 4px;">
@@ -104,13 +110,15 @@ document.addEventListener('DOMContentLoaded', () => {
                             
                             return `<span class="badge badge-${badgeClass}" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; font-weight: 500;">
                                 <span class="material-symbols-outlined" style="font-size: 16px;">${exp.icon}</span>
-                                ${exp.text}
+                                ${escapeHtml(exp.text)}
                             </span>`;
                         }).join('')}
                     </div>
                     <div class="text-xs text-muted" style="margin-top: 0.8rem; display: flex; justify-content: space-between;">
                         <span>Max Coverage: <strong>₹${plan.coverage.toLocaleString()}</strong></span>
-                        <span>Type: ${plan.type}</span>
+                        <span>${plan.irdai
+                            ? `IRDAI UIN: <strong>${escapeHtml(plan.irdai.uin)}</strong>${plan.irdai.approval_date ? ` · approved ${escapeHtml(plan.irdai.approval_date)}` : ''}`
+                            : `Type: ${escapeHtml(plan.type)}`}</span>
                     </div>
                 </div>
             </div>
