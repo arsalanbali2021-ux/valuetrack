@@ -109,6 +109,18 @@ What I like most is that every result comes with **reasons**: "Age 18–65 limit
 
 It's all rule-based. There's no machine learning and nothing is hidden. If you want to change the weights, they're right there in `services/insurance_service.py`.
 
+### Bringing in the real list from IRDAI
+
+Here's something that bugged me after a while: my sample plans were made up. They were realistic, but made up. So I wanted the recommendations tied to something real.
+
+In India, every health insurance product has to be approved by IRDAI, and each one gets a **UIN**, a unique ID like `BAJHLIP23020V012223`. IRDAI publishes the whole list on its website. That's the most official source there is.
+
+My first plan was to scrape it. Then I checked IRDAI's `robots.txt`, and it blocks every bot, even Google. So scraping it would mean ignoring the site's own rules, which didn't feel right. Instead, ValueTrack asks the admin to do the one step a bot isn't allowed to do: open the page in a normal browser and save it, copy it, or export it. ValueTrack takes it from there.
+
+The import code (`services/irdai_import.py`) accepts all three formats. It finds the table by looking for the "UIN" and "Product Name" headers, so it doesn't care about the rest of the page. It cleans each row and matches products by UIN, so importing the same list twice just updates what's there. When I tried it on the real IRDAI page, one row had no UIN at all, straight from IRDAI. ValueTrack skips rows like that and tells you which ones it skipped.
+
+IRDAI's list says which products exist, not how much they cost. So the admin still adds the premium, ages and cover for each plan, and links it to its UIN. After that, users can tick **"IRDAI-registered plans only"** and the scorer only looks at linked plans whose products aren't archived. The same scoring rules apply, with an extra green badge showing the UIN, plus the insurer's name and approval date on each card.
+
 ---
 
 ## The dashboard
@@ -123,7 +135,7 @@ A small thing that annoyed me: if you spent nothing in a month, that month simpl
 
 ## The admin panel
 
-This came later, once I got tired of editing insurance plans directly in MySQL. Admins can add, edit and delete insurance plans, manage expense categories, change system settings, and see the list of users.
+This came later, once I got tired of editing insurance plans directly in MySQL. Admins can add, edit and delete insurance plans, import and search the IRDAI catalogue, manage expense categories, change system settings, and see the list of users.
 
 Every admin endpoint goes through the same `_require_admin` check: is there a `user_id`, does that user exist, and is their role actually `admin`? If not, you get a 403.
 

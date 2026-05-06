@@ -159,6 +159,28 @@ flowchart TD
 
 The best possible score is 1.00. A plan that only passes the age and budget filters starts at 0.50 and can only climb from there. The reasons list is what you see as the little ticks and crosses on each card.
 
+### 6b. With "IRDAI-registered plans only"
+
+```mermaid
+flowchart TD
+    A[Admin opens irdai.gov.in/health-insurance-products<br/>in a normal browser] --> B[Saves the page / copies rows / exports CSV]
+    B --> C[Admin panel: IRDAI Catalogue → Import]
+    C --> D[POST /api/admin/irdai/import]
+    D --> E[Find the table by its UIN + Product Name headers]
+    E --> F{Row has UIN,<br/>insurer, product?}
+    F -- no --> G[skipped, listed in the summary]
+    F -- yes --> H[Upsert into irdai_products<br/>matched on UIN]
+    H --> I[Admin clicks Create plan<br/>adds premium, ages, cover]
+    I --> J[insurance row saved with irdai_uin]
+    J --> K[User picks Plan Source:<br/>IRDAI-registered plans only]
+    K --> L[POST /api/insurance/request<br/>source = irdai]
+    L --> M[Only plans joined to a<br/>non-archived IRDAI product]
+    M --> N[Same scoring as above]
+    N --> O[Results show insurer, UIN,<br/>approval date + green badge]
+```
+
+ValueTrack never fetches anything from IRDAI. Their `robots.txt` blocks all bots, so the admin brings the file in by hand.
+
 ---
 
 ## 7. The dashboard call
@@ -211,6 +233,7 @@ erDiagram
     users ||--o{ insurance_request : submits
     insurance_request ||--o{ insurance_result : produces
     insurance ||--o{ insurance_result : "ranked in"
+    irdai_products |o--o{ insurance : "UIN of"
     system_settings
     expense_categories
 ```

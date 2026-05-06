@@ -1,7 +1,7 @@
 # ValueTrack Database
 
 ## Overview
-MySQL 8+ relational database: 7 core tables plus 2 admin tables, mostly in Third Normal Form (3NF).
+MySQL 8+ relational database: 7 core tables plus 3 admin tables, mostly in Third Normal Form (3NF).
 
 ## Setup
 ```bash
@@ -27,8 +27,10 @@ mysql -u root -p valuetrack < seed_sample_users.sql
 | `insurance_result`  | Ranked scoring results per request   |
 | `system_settings`   | Key-value settings (admin)           |
 | `expense_categories`| Expense categories (admin)           |
+| `irdai_products`    | IRDAI register of approved products (imported by admin) |
 
 ## Files
 - `schema.sql` — DDL for all tables
 - `seed_insurance.sql` — 30 sample plans (illustrative premiums, not real quotes)
 - `seed_sample_users.sql` — 2 demo users + 1 demo admin (credentials in the file header)
+- `migrate_v1_1.sql` — one-time upgrade for databases created before v1.1 (adds `insurance.irdai_uin` and `irdai_products`)

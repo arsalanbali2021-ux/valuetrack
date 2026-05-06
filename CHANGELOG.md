@@ -2,6 +2,18 @@
 
 All notable changes to ValueTrack, newest first.
 
+## [1.1.0] - 2026-05-06
+
+### Added
+- IRDAI product catalogue: admins import IRDAI's public list of approved health insurance products (saved page, pasted rows or CSV)
+- Plans can be linked to an IRDAI UIN, and "Create plan" works straight from a catalogue entry
+- "IRDAI-registered plans only" option on the insurance page; results show insurer, UIN and approval date
+- `migrate_v1_1.sql` for upgrading existing databases
+- 13 parser tests for the IRDAI import
+
+### Notes
+- ValueTrack doesn't scrape IRDAI, because its robots.txt disallows all crawlers. The admin downloads or copies the list in a browser and imports it.
+
 ## [1.0.1] - 2026-04-23
 
 ### Fixed
