@@ -4,116 +4,51 @@
 
 <h1 align="center">ValueTrack</h1>
 
-<p align="center">
-  A personal finance and insurance helper: track loans, watch your monthly spending, and find a health plan that actually fits your budget.
-</p>
-
-<p align="center">
-  <sub>🎓 College mini project · 2nd-year B.Tech</sub>
-</p>
+<p align="center">Loans, monthly spending and health insurance, in one small web app.</p>
 
 ---
 
-## What is this?
+This was my mini project for 2nd year B.Tech. It's a college project, so please don't put your real bank details into it.
 
-> **This is a college mini project.** I built ValueTrack in my 2nd year of B.Tech as my mini project. The database write-up I prepared for my viva is included in this repo too. It's built to show how the pieces of a real app fit together (database design, a layered backend, and a frontend that talks to an API). It isn't a production finance product, so please don't put real financial data in it.
+It started as an EMI calculator. Most loan sites give you one EMI figure and stop there. I wanted the whole schedule: for every month, how much goes to interest, how much actually comes off the loan, and what's left. Once that worked I added expense tracking with a monthly budget, and then an insurance matcher, because "which health plan should we take" comes up at home every year.
 
-ValueTrack is a full-stack web app. It started as "let me just calculate an EMI properly" and kept growing. Now it covers four things:
+What it does right now:
 
-- **Loans and EMIs.** Enter a loan and get the full month-by-month amortization schedule. Every rupee is calculated with `Decimal`, and the last month is adjusted so the balance lands exactly on ₹0.00.
-- **Expenses.** Log what you spend, mark fixed costs (rent, subscriptions), set a monthly budget and see how close you are to it.
-- **Insurance matching.** Give your age, budget and what you need covered (critical illness, maternity, accident). The scorer ranks every plan in the database and keeps the top 5, with a reason shown for each one. You can also pick **"IRDAI-registered plans only"**, which ranks only plans linked to a real product from IRDAI's public register.
-- **Dashboard.** One screen with the numbers that matter: outstanding loan balance, next EMI, this month's spending against your budget, your best insurance match, plus charts.
+- Creates a loan and generates its month-by-month EMI schedule. A ₹5,00,000 loan at 8.5% for 60 months comes to ₹10,258.27 a month, and the last row ends at exactly ₹0.00.
+- Tracks expenses, with a monthly budget and a bar that turns amber at 75% and red once you go over.
+- Takes your age, budget and what you need covered (critical illness, maternity, accident), ranks every plan, keeps the top 5, and gives a reason for each, like "Under budget: ₹900/mo" or "NO Maternity Cover".
+- Has a dashboard with outstanding balance, next EMI, this month's spend and three small charts.
+- Has an admin panel for plans, expense categories and settings. It can also import IRDAI's list of approved health products (more on that below).
 
-There's also an **admin panel**. Admins can manage insurance plans, expense categories and system settings, see the user list, and import the **IRDAI product catalogue** (more on that [below](#irdai-registered-recommendations)).
+The longer explanation is in [HOW_IT_WORKS.md](HOW_IT_WORKS.md), and the request-by-request diagrams are in [FLOW.md](FLOW.md).
 
-If you want the story of how it works under the hood, read [HOW_IT_WORKS.md](HOW_IT_WORKS.md). For the step-by-step request flow, read [FLOW.md](FLOW.md).
+## Why it's built this way
 
-## What makes it different
+The backend is Flask + SQLAlchemy on MySQL, and the frontend is plain HTML, CSS and JavaScript. There's no React and no build step. Flask serves the pages as well as the API, so there's only one thing to run. I wanted it to run on any machine with Python and MySQL, including a college lab PC, without setting up anything else.
 
-There are plenty of EMI calculators and expense trackers out there. Here's what I think sets this one apart:
+All the money math uses Python's `Decimal`, not floats. The final EMI is calculated separately so the balance closes at zero instead of something like `-0.03`. The insurance score is a few fixed rules (age and budget act as hard filters, then points for each cover you need), so you can read `services/insurance_service.py` and see exactly why a plan ranked where it did. I didn't want an ML model I couldn't explain in a viva.
 
-- **Loans, spending and insurance in one place.** Most apps do one of these. ValueTrack puts your EMIs, your monthly budget and your insurance choice side by side on one dashboard, because in real life they all come out of the same salary.
-- **The whole EMI schedule, not just one number.** Most calculators stop at "your EMI is ₹10,258". ValueTrack shows every month: how much is interest, how much actually reduces the loan, and what's left.
-- **Money math that adds up to the paisa.** Every calculation uses `Decimal` with bank-style rounding, and the last month is adjusted so the loan closes at exactly ₹0.00. No `-0.03` left over at the end.
-- **Insurance recommendations that explain themselves.** You don't just get a score. Each plan comes with plain reasons like "Under budget: ₹900/mo" or "NO Maternity Cover", so you can see why it ranked where it did.
-- **Built around what people actually ask.** The insurance filters are critical illness, maternity and accident cover, plus age and a monthly budget. Those are the questions families in India really ask when picking a health plan, rather than generic policy jargon.
-- **Backed by the regulator's own list.** Plans can be linked to their official IRDAI UIN, the ID every approved product in India gets. Users can choose to see only IRDAI-registered plans, and each one shows its insurer, UIN and approval date.
-- **Rules you can read, not a black box.** The scoring is plain rule-based logic with fixed weights, all in one file. Anyone can check it, question it, or change it.
-- **Made for India.** Rupees everywhere, Indian-style loan amounts, and sample plans modelled on the kind of health covers sold here.
-- **Runs with almost no setup.** One Flask server serves both the API and the pages. There's no build step, no Node and no Docker: just Python and MySQL.
-- **An admin panel included.** Plans, categories and settings can be managed from the browser instead of editing the database by hand.
+## Things that changed along the way
 
-## Tech stack
+- I had a CSV/Excel import for bank statements using pandas. Every bank's CSV was different, and pandas was by far the heaviest dependency for one feature, so I took it out.
+- The first insurance scorer was built around "pre-existing conditions allowed". That's not really what people ask when picking a family plan. They ask about maternity and accidents, so I rebuilt it around critical illness, maternity and accident cover.
+- For a while, `schema.sql` didn't match the Python models. A fresh install would fail, and the demo logins in the seed file had fake password hashes. I only found out when I set it up from scratch on a clean database. That's fixed in v1.0.1.
+- I wanted the insurance data to come from IRDAI directly, but their robots.txt blocks all crawlers. So it's an import you do by hand instead of a scraper (details below).
 
-| Layer    | What I used                                                  |
-|----------|--------------------------------------------------------------|
-| Frontend | HTML, CSS, vanilla JavaScript (Fetch API), Material Symbols  |
-| Backend  | Python 3, Flask, Flask-CORS, SQLAlchemy 2, bcrypt            |
-| Database | MySQL 8 (InnoDB, mostly 3NF)                                 |
-| Testing  | pytest                                                       |
+## Setting it up
 
-No React, no build step, no Docker. You clone it, point it at MySQL and run one Python file.
-
-## Project structure
-
-```
-ValueTrack/
-├── backend/
-│   ├── app.py               # Flask app factory, registers blueprints, serves the frontend
-│   ├── config.py            # reads .env (DB credentials, secret key)
-│   ├── db.py                # SQLAlchemy engine + scoped session
-│   ├── models.py            # ORM models for all tables
-│   ├── routes/              # auth, loans, expenses, insurance, dashboard, admin
-│   ├── services/            # the actual logic (EMI math, scoring, auth, IRDAI import)
-│   ├── tests/               # pytest tests
-│   ├── requirements.txt
-│   ├── .env.example
-│   └── run.bat              # Windows shortcut to start the server
-├── frontend/
-│   ├── index.html           # login / register
-│   ├── dashboard.html
-│   ├── loans.html
-│   ├── expenses.html
-│   ├── insurance.html
-│   ├── admin.html
-│   ├── css/styles.css
-│   └── js/                  # api.js wraps every backend call
-├── database/
-│   ├── schema.sql           # CREATE DATABASE + all tables
-│   ├── seed_insurance.sql   # sample insurance plans
-│   ├── seed_sample_users.sql
-│   ├── migrate_v1_1.sql     # upgrade for databases created before v1.1
-│   └── README_db.md
-├── docs/                    # API docs, setup notes, assumptions, roadmap
-├── assets/logo.svg
-├── FLOW.md
-├── HOW_IT_WORKS.md
-└── PROJECT_DATABASE_Explanation.docx   # long-form database write-up (ER, normalization, viva Q&A)
-```
-
-## Getting started
-
-### 1. What you need
-
-- Python 3.10 or newer
-- MySQL 8.0 or newer, running locally
-- Git
-
-### 2. Clone the repo
+You need Python 3.10+, MySQL 8 and Git.
 
 ```bash
 git clone https://github.com/arsalanbali2021-ux/valuetrack.git
 cd valuetrack
 ```
 
-### 3. Set up the database
+Create the database and load the sample data. The second file is optional and adds demo logins.
 
 ```bash
 mysql -u root -p < database/schema.sql
 ```
-
-This creates the `valuetrack` database and all its tables. Then load the sample data:
 
 ```bash
 mysql -u root -p valuetrack < database/seed_insurance.sql
@@ -123,54 +58,28 @@ mysql -u root -p valuetrack < database/seed_insurance.sql
 mysql -u root -p valuetrack < database/seed_sample_users.sql
 ```
 
-The first gives the recommender 30 plans to rank. The second is optional and adds demo accounts so you can log in straight away:
+Demo logins from that file (local use only):
 
-| Email               | Password      | Role  |
-|---------------------|---------------|-------|
-| `alice@example.com` | `Password123` | user (budget ₹25,000) |
-| `bob@example.com`   | `SecurePass1` | user  |
+| Email               | Password      | Role |
+|---------------------|---------------|------|
+| `alice@example.com` | `Password123` | user, budget ₹25,000 |
+| `bob@example.com`   | `SecurePass1` | user |
 | `admin@example.com` | `AdminPass1`  | admin |
 
-These are for local testing only.
-
-### 4. Set up the backend
+Set up Python:
 
 ```bash
 cd backend
 python -m venv venv
 ```
 
-Activate the virtual environment.
-
-Windows:
-
-```bash
-venv\Scripts\activate
-```
-
-macOS / Linux:
-
-```bash
-source venv/bin/activate
-```
-
-Install the dependencies:
+On Windows, `venv\Scripts\activate`. On macOS/Linux, `source venv/bin/activate`. Then:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 5. Configure your environment
-
-Copy the example env file:
-
-```bash
-cp .env.example .env
-```
-
-(On Windows Command Prompt use `copy .env.example .env`.)
-
-Open `.env` and fill in your MySQL password. Change `SECRET_KEY` to any random string:
+Copy `.env.example` to `.env` (`cp` on macOS/Linux, `copy` on Windows). Put your MySQL password in it, and change `SECRET_KEY` to any random string:
 
 ```
 SECRET_KEY=some-long-random-string
@@ -182,130 +91,97 @@ DB_PORT=3306
 DB_NAME=valuetrack
 ```
 
-### 6. Run it
+Run it (or double-click `run.bat` on Windows):
 
 ```bash
 python app.py
 ```
 
-Or just double-click `run.bat` on Windows.
+Open http://127.0.0.1:5000. If the page doesn't load, `curl http://127.0.0.1:5000/api/health` should come back with `"status": "ok"`. If it doesn't, the problem is usually the MySQL password in `.env`.
 
-Then open **http://127.0.0.1:5000** in your browser. Flask serves the frontend itself, so you don't need a second server. Log in with a demo account or register your own.
+You can't sign up as an admin. Use the demo admin, or promote your own account:
 
-Quick check that the API is alive:
-
-```bash
-curl http://127.0.0.1:5000/api/health
+```sql
+UPDATE valuetrack.users SET role = 'admin' WHERE email = 'you@example.com';
 ```
 
-### 7. Make yourself an admin (optional)
+Log out and log back in, and you'll land on the admin panel.
 
-Nobody can sign up as an admin. That's on purpose. You can use the demo admin above, or register normally and promote your account in MySQL:
+### Upgrading an older database
+
+A fresh install from `schema.sql` has everything. If your database is from before v1.0.1, add the two missing columns:
 
 ```sql
 USE valuetrack;
-UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+ALTER TABLE users    ADD COLUMN monthly_budget DECIMAL(12,2) DEFAULT 0.00;
+ALTER TABLE expenses ADD COLUMN is_fixed TINYINT(1) DEFAULT 0;
 ```
 
-Log out and log back in. You'll land on the admin panel instead of the dashboard.
+If it's from before v1.1, also run this once:
 
-## IRDAI-registered recommendations
+```bash
+mysql -u root -p < database/migrate_v1_1.sql
+```
 
-Every health insurance product sold in India has to be approved by **IRDAI** (the Insurance Regulatory and Development Authority of India), and gets a unique ID called a **UIN**. IRDAI publishes the full list here:
+## IRDAI-registered plans
 
-**https://irdai.gov.in/health-insurance-products**
+Every health insurance product sold in India has to be approved by IRDAI, and each one gets a UIN, an ID like `BAJHLIP23020V012223`. IRDAI publishes the full list at https://irdai.gov.in/health-insurance-products.
 
-ValueTrack can import that list and use it to back up its recommendations.
+My first idea was to scrape that page. Then I checked https://irdai.gov.in/robots.txt, and it says `Disallow: /` for every bot, even Googlebot. So ValueTrack never contacts IRDAI on its own. You open the page in your browser and bring the table over yourself:
 
-**Why it's an import and not a live scraper.** I wanted this to pull data straight from IRDAI. But IRDAI's `robots.txt` blocks all automated crawlers (`Disallow: /` for every bot), so writing a scraper for it would go against the site's own rules. ValueTrack never contacts IRDAI by itself. You open the page in your browser like any normal visitor and hand the data to ValueTrack. It's a small extra step, and it keeps the project honest.
+1. Go to Admin Panel → IRDAI Catalogue.
+2. Open the IRDAI page in another tab. Filter it if you want, and show as many rows per page as it lets you.
+3. Either save the page (Ctrl+S, "Webpage, HTML only") and upload it, or select the rows and paste them in. You can also go through Excel and upload a CSV.
+4. Click Import. Products are matched on UIN, so importing the same list again only updates it.
 
-**How to use it:**
+The list only tells you a product exists. It doesn't give the premium or what it covers. So for each product you want to recommend, click "Create plan" and fill those in. On the Insurance page, users can then choose "IRDAI-registered plans only". The results show the insurer, the UIN and the approval date, and archived products are skipped.
 
-1. Log in as an admin and open **Admin Panel → IRDAI Catalogue**.
-2. In another tab, open the IRDAI link above. Filter it if you want (financial year, insurer) and show as many rows per page as it allows.
-3. Get the table into ValueTrack in any one of these ways:
-   - **Save the page.** Press `Ctrl+S`, choose "Webpage, HTML only", then upload the `.html` file.
-   - **Copy and paste.** Select the table rows, copy them, and paste them into the text box.
-   - **CSV.** Paste the table into Excel or Sheets, save it as `.csv`, then upload it.
-4. Click **Import**. ValueTrack reads the insurer, UIN, product name, type, financial year, approval date and archived status. Re-importing is safe, because products are matched by UIN and updated in place.
-5. IRDAI's list doesn't include premiums or cover details. So, for any product you want to recommend, click **Create plan**, then fill in the premium, ages and cover. The plan is saved with the product's UIN.
-6. On the **Insurance** page, users can now set **Plan Source → IRDAI-registered plans only**. The results show the insurer, the UIN, the approval date and a green "IRDAI-registered" badge. Archived products are left out.
+The data is only as recent as your last import. Re-import every few months.
 
-Rows that come in without a UIN are skipped, and the import summary tells you which ones. This happens in IRDAI's own table too, now and then.
+## API
 
-## Running the tests
+Everything is under `/api`, and responses look like `{"status": "success", "message": "...", "data": {...}}`.
+
+| Method | Endpoint | What it does |
+|--------|----------|--------------|
+| GET | `/health` | health check |
+| POST | `/auth/register`, `/auth/login` | sign up, log in |
+| PUT | `/auth/budget` | save monthly budget |
+| POST | `/loans` | create a loan and its EMI schedule |
+| GET | `/loans/<id>/schedule` | full schedule for one loan |
+| POST / GET | `/expenses` | add an expense / list them (`?user_id=&month=&year=`) |
+| POST | `/insurance/request` | rank plans and save the top 5 (`source`: `all` or `irdai`) |
+| GET | `/insurance/result/<id>` | a saved ranking |
+| GET | `/dashboard?user_id=` | everything the dashboard needs |
+| various | `/admin/insurance`, `/admin/categories`, `/admin/settings`, `/admin/users` | admin CRUD |
+| POST / GET | `/admin/irdai/import`, `/admin/irdai/products` | IRDAI import and search |
+
+[docs/API_DOCS.md](docs/API_DOCS.md) has the request bodies. It's older than some of these changes and still mentions the CSV import.
+
+## Tests
 
 ```bash
 cd backend
 python -m pytest -v
 ```
 
-None of the tests need a database. `test_emi.py` checks the formula, the zero-interest case and that the final balance is exactly zero. `test_insurance_scoring.py` checks the age and budget filters, every scoring weight, the coverage bonus and the ranking order. `test_irdai_import.py` checks the IRDAI parser against a saved page, pasted rows and CSV, along with UIN, date and archive handling.
+There are 25 tests, and none of them need a database. They cover the EMI maths (including 0% interest and the exact-zero last month), every scoring rule, and the IRDAI parser with a saved page, pasted rows and CSV.
 
-## API at a glance
+## What's still rough
 
-All endpoints live under `/api`. Responses look like `{ "status": "success", "message": "...", "data": {...} }`.
+- Auth is demo-level. Passwords are hashed with bcrypt, but after login the browser keeps the user in `localStorage` and sends `user_id` with every request, and the server doesn't check the token each time. That's fine on localhost and not okay anywhere else.
+- The loans page has no "all my loans" list. You see a schedule right after creating a loan, or by entering its ID.
+- Schema changes are hand-written SQL files. Alembic would be the proper fix.
 
-| Method | Endpoint                              | What it does                                  |
-|--------|---------------------------------------|-----------------------------------------------|
-| GET    | `/health`                             | Health check                                  |
-| POST   | `/auth/register`                      | Create an account                             |
-| POST   | `/auth/login`                         | Log in, returns user info and a token         |
-| PUT    | `/auth/budget`                        | Save your monthly budget                      |
-| POST   | `/loans`                              | Create a loan and generate its EMI schedule   |
-| GET    | `/loans/<loan_id>/schedule`           | Get the full EMI schedule for a loan          |
-| POST   | `/expenses`                           | Add an expense                                |
-| GET    | `/expenses?user_id=&month=&year=`     | List expenses (optionally for one month)      |
-| POST   | `/insurance/request`                  | Score plans, save and return the top 5 (`source`: `all` or `irdai`) |
-| GET    | `/insurance/result/<request_id>`      | Fetch a saved ranking                         |
-| GET    | `/dashboard?user_id=`                 | Everything the dashboard needs in one call    |
-| GET/POST/PUT/DELETE | `/admin/insurance[/<id>]`  | Manage insurance plans (admin only)           |
-| GET/POST/PUT/DELETE | `/admin/categories[/<id>]` | Manage expense categories (admin only)        |
-| GET/PUT | `/admin/settings`                    | Read / update system settings (admin only)    |
-| GET    | `/admin/users`                        | List users (admin only)                       |
-| POST   | `/admin/irdai/import`                 | Import the IRDAI list from a file or pasted text (admin only) |
-| GET    | `/admin/irdai/products?q=&type=`      | Search the imported IRDAI catalogue (admin only) |
+Next on my list: JWT auth, the loans list, PDF export of the EMI schedule, and EMI reminder emails. The longer wishlist is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
-More detail, including request bodies, is in [docs/API_DOCS.md](docs/API_DOCS.md). Some older notes there still mention the CSV import I later removed.
+## Other docs
 
-## Known issues
+- [HOW_IT_WORKS.md](HOW_IT_WORKS.md): the longer walkthrough
+- [FLOW.md](FLOW.md): diagrams for each flow
+- [CHANGELOG.md](CHANGELOG.md): what changed in each version
+- [docs/SETUP.md](docs/SETUP.md): more setup notes
+- [database/README_db.md](database/README_db.md): the tables
+- `PROJECT_DATABASE_Explanation.docx`: the database write-up I prepared for my viva (ER diagram, normalisation, questions)
 
-I'd rather list these than have you discover them at 2 a.m. before a demo.
-
-- **Upgrading an older database?** A fresh install from `schema.sql` has everything. If your database is older:
-  - Created before **v1.0.1**? Add two columns once:
-
-    ```sql
-    USE valuetrack;
-    ALTER TABLE users    ADD COLUMN monthly_budget DECIMAL(12,2) DEFAULT 0.00;
-    ALTER TABLE expenses ADD COLUMN is_fixed TINYINT(1) DEFAULT 0;
-    ```
-
-  - Created before **v1.1**? Run the IRDAI migration once:
-
-    ```bash
-    mysql -u root -p < database/migrate_v1_1.sql
-    ```
-- **IRDAI data is only as fresh as your last import.** There's no automatic sync (see above for why). Re-import every so often to pick up new and archived products.
-- **Auth is demo-grade.** Passwords are properly bcrypt-hashed, but after login the frontend keeps the user in `localStorage` and sends `user_id` with requests. The server doesn't verify the token on each call. It's fine for a college project on localhost. Don't put it on the internet like this.
-- **Loans page has no "my loans" list.** You see a loan's schedule right after you create it, or by entering its ID.
-
-## Where it's going
-
-The wishlist is in [docs/ROADMAP.md](docs/ROADMAP.md). At the top: proper JWT auth, Alembic migrations (so schema upgrades don't need hand-written `ALTER`s), a loans list, PDF export of EMI schedules, and EMI reminder emails.
-
-## Docs
-
-- [HOW_IT_WORKS.md](HOW_IT_WORKS.md): the walkthrough, in plain words
-- [FLOW.md](FLOW.md): user flow and request flow, step by step
-- [docs/SETUP.md](docs/SETUP.md): longer setup notes and troubleshooting
-- [docs/API_DOCS.md](docs/API_DOCS.md): endpoint reference
-- [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md): design decisions and defaults
-- [database/README_db.md](database/README_db.md): table overview
-- `PROJECT_DATABASE_Explanation.docx`: the full database write-up I used for my viva
-
-## Author
-
-**Arsalan Bali** ([@arsalanbali2021-ux](https://github.com/arsalanbali2021-ux))
-
-If something breaks or doesn't make sense, open an issue. I'd genuinely like to know.
+Made by Arsalan Bali ([@arsalanbali2021-ux](https://github.com/arsalanbali2021-ux)). If something doesn't work, open an issue.

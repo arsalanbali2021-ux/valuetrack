@@ -1,182 +1,102 @@
 # How ValueTrack works
 
-Okay, so. If you've opened this file, you either want to understand the code, you're reviewing my project, or you're future me who forgot why something is the way it is. Hi, future me.
+These are my notes on how the code fits together and why some things are the way they are. For diagrams, see [FLOW.md](FLOW.md).
 
-I'll explain it the way I'd explain it to a friend sitting next to me, not the way a textbook would. If you want the arrows-and-boxes version, that's in [FLOW.md](FLOW.md).
+## Layout
 
----
+Flask does two jobs here. It serves the HTML pages from `frontend/`, and it answers everything under `/api/`. So you start one process and you're done.
 
-## Where it started
+The backend is split three ways, and I'd keep that split even if I rewrote the whole thing:
 
-This was my 2nd-year mini project. The original idea was small. Every loan website shows you an EMI number, but almost none of them show you the whole schedule honestly: how much of each payment is interest, how much actually reduces the loan, and what's left after each month. I wanted that.
+- `routes/` only handles HTTP. It reads the JSON, checks the fields are there and are the right type, and sends back a response.
+- `services/` is where the actual work happens: EMI maths, insurance scoring, password hashing, the IRDAI import.
+- `models.py` holds the SQLAlchemy classes, one per table.
 
-Then it grew. If I'm tracking loans, I should track expenses too. If I'm tracking expenses, a budget makes sense. And insurance was the thing everyone at home kept arguing about ("which plan, which company, is maternity covered or not?"), so I added a matcher for that. That's how one EMI calculator turned into ValueTrack.
+When an EMI number is wrong it's in `emi_service.py`. When the status code is wrong it's in a route. That alone has saved me a lot of time.
 
----
+Every response has the same shape, `{"status": ..., "message": ..., "data": ...}`. On the frontend, `api.js` unwraps it in one place. The page scripts only ever see `data`, or get an error carrying the server's message.
 
-## The shape of the code
+## Login
 
-There's one Flask server. It serves the HTML pages and it answers the API calls. There's no separate frontend server and no build step. I wanted someone to be able to clone it and run it in five minutes.
+To register you need a name, an email and a password of at least 8 characters with a number in it. Emails are lowercased before saving, so `Arsalan@x.com` and `arsalan@x.com` count as the same account. Passwords go through bcrypt (12 rounds), and only the hash is stored.
 
-The backend is split into three layers. Honestly, this split is the thing I'm proudest of structurally:
+A wrong email and a wrong password both return "Invalid email or password". If they returned different messages, the login form would tell anyone which emails are registered.
 
-- **`routes/`** only deal with HTTP. They read the JSON, check that fields exist and are the right type, and return a response. They don't calculate anything.
-- **`services/`** are where the thinking happens: EMI math, insurance scoring, password hashing.
-- **`models.py`** is just SQLAlchemy classes that mirror the MySQL tables.
+The weak spot is what happens after login. The browser keeps the user object in `localStorage` and sends `user_id` with each request. A token is set as an HttpOnly cookie, but the server never checks it. It works for a demo on localhost. It is not real auth, and JWT is the first thing on the roadmap.
 
-So when something is wrong with an EMI, I know it's in `emi_service.py`. When the API returns a weird status code, I look in the route. It saved me a lot of hunting.
+## Loans and EMI
 
-Every response comes back in the same shape:
-
-```json
-{ "status": "success", "message": "Loan created successfully", "data": { ... } }
-```
-
-On the frontend, `api.js` unwraps that once, so the page scripts only ever see `data`. If something fails, it throws an error with the server's message, and the page shows it in an alert.
-
----
-
-## Logging in
-
-Registration is simple. Name, email, and a password of at least 8 characters with at least one number. The email gets lowercased so nobody can register the same address twice with different capital letters.
-
-The password never gets stored. It goes through **bcrypt** with 12 rounds and only the hash goes into the database. When you log in, bcrypt checks your typed password against that hash.
-
-One small detail I like: a wrong email and a wrong password give you the exact same message. If the app said "no account with this email", anyone could use the login page to check who's registered.
-
-Now the honest part. After login, the frontend saves your user info in `localStorage` and sends your `user_id` with each request. There is a token, and it's set as an HttpOnly cookie, but the server doesn't check it on every call. For a college project running on my laptop that was fine. For anything real it isn't, and moving to JWT is the first item on the roadmap. I'd rather say this upfront than pretend.
-
----
-
-## Loans and EMIs (the part I spent the most time on)
-
-The formula itself is the standard one:
+The formula is the standard one:
 
 ```
-r   = annual rate / 12 / 100        (monthly interest rate)
+r   = annual rate / 12 / 100
 EMI = P × r × (1 + r)^N / ((1 + r)^N − 1)
 ```
 
-If the interest rate is 0, the formula divides by zero, so that case is just `P / N`.
+At 0% interest that divides by zero, so that case is just `P / N`.
 
-Take a ₹5,00,000 loan at 8.5% for 60 months. The EMI comes to **₹10,258.27**. In month 1, ₹3,541.67 of that is interest and only ₹6,716.60 actually reduces your loan. Seeing that number is exactly why I wanted the schedule in the first place.
+Take ₹5,00,000 at 8.5% for 60 months. The EMI is ₹10,258.27. In month 1, ₹3,541.67 of it is interest and only ₹6,716.60 reduces the loan. Seeing that split for every month is the whole point of the loans page.
 
-Here's what took me way longer than the formula. My first version used normal Python floats, and the final month's remaining balance came out as something like `-0.03` or `0.0000001`. Floats can't represent money exactly, and tiny rounding errors pile up over 60 months.
+The fiddly part was rounding. With floats, sixty months of tiny errors leave a balance like `-0.03` at the end. So `emi_service.py` does two things:
 
-So I fixed it in two ways:
+1. Everything is a `Decimal`, rounded to 2 places with `ROUND_HALF_UP` at each step.
+2. The last month doesn't use the standard EMI. It pays whatever principal is left plus that month's interest. That's why the final EMI can be a few paise off the others, and why the balance always ends at ₹0.00.
 
-1. **Everything uses `Decimal`**, rounded to 2 places with `ROUND_HALF_UP` at every step, the way a bank would round.
-2. **The last month is special.** Instead of paying the standard EMI, it pays off whatever principal is left, plus that month's interest. That's why the last EMI is sometimes a few paise different from the others, and why the balance ends at exactly ₹0.00 every time.
+The loan row and all its schedule rows are saved in one transaction, so you can't end up with half a schedule. `tests/test_emi.py` checks the normal case, the 0% case and the zero final balance, without needing a database.
 
-The loan and all of its monthly rows get saved in a single transaction. Either the whole schedule exists or none of it does.
+## Expenses and budget
 
-The EMI tests in `backend/tests/test_emi.py` check all of this, including the zero-interest case and the "final balance must be exactly zero" rule. They don't need a database, so they're the quickest way to see something work.
+An expense has a category, an amount, a date, an optional description, and a "fixed" flag for things that repeat, like rent. Set a monthly budget on the expenses page and you get a progress bar. It's green up to 75%, amber up to 100%, and red after that. The dashboard shows the same bar.
 
----
+There used to be a CSV/Excel import for bank statements. It needed pandas and openpyxl, and most of the code was cleanup for each bank's slightly different CSV layout. I removed it in March. The older files in `docs/` still mention it.
 
-## Expenses and the budget
+## Insurance
 
-Adding an expense is straightforward: category, amount, date, an optional description, and a "fixed" checkbox for things like rent or Netflix that come every month.
+The first version scored plans on age, budget and whether pre-existing conditions were allowed. That last one turned out to be the wrong question. When a family picks a plan, they ask "is maternity covered?" and "what about accidents?". So version two is built around critical illness, maternity and accident cover.
 
-You can set a monthly budget on the expenses page. The page then shows a progress bar: green while you're fine, amber after 75%, red once you've crossed it. The same bar shows up on the dashboard.
+Age and budget are hard filters. If you're outside the plan's age range, or the monthly premium is more than your budget, the plan is dropped. Every plan left starts at 0.50 and gets:
 
-**A bit of history:** I originally built a CSV/Excel import using pandas. You could upload your bank statement and it would bulk-insert everything. It worked, but it pulled in pandas and openpyxl, which are huge dependencies for one feature. Every bank's CSV format was different, and most of my code ended up being cleanup for messy files. I removed it and kept manual entry clean. If you see mentions of CSV import in the older docs, that's why.
+| Need | If the plan covers it |
+|------|-----------------------|
+| Critical illness | +0.15 |
+| Maternity | +0.15 |
+| Accident | +0.10 |
+| (always) | up to +0.10, based on coverage compared with the biggest plan in the table |
 
----
+The maximum is 1.00. The top 5 are saved, and the best one shows up on the dashboard.
 
-## Insurance matching
+Each result also carries a list of reasons, such as "Age 18-65 limit met", "Under budget: ₹900/mo" or "NO Maternity Cover". A bare 0.85 doesn't tell you why a plan came first. The reasons do. The weights are plain numbers in `services/insurance_service.py`, so changing them is a one-line edit.
 
-This part went through two versions.
+### The IRDAI list
 
-The first version scored plans on age match, budget fit and whether pre-existing conditions were allowed. It worked, but when I showed it to people, nobody asked about "pre-existing conditions" in the abstract. They asked "does it cover maternity?" or "what if there's an accident?". So I rebuilt it around what people actually ask.
+The 30 sample plans in the seed file are made up. They're modelled on real products, but the numbers are mine. I wanted at least some recommendations tied to something official.
 
-Here's how it works now:
+Every health product sold in India is approved by IRDAI and gets a UIN, an ID like `BAJHLIP23020V012223`. IRDAI lists them all at irdai.gov.in/health-insurance-products. I was going to scrape that page, until I saw that their `robots.txt` disallows every crawler. So it's a manual import instead. The admin opens the page in a browser, then saves it, copies the rows, or exports a CSV, and uploads that.
 
-**Two hard filters first.** If your age isn't within the plan's age range, or the monthly premium is more than your budget, the plan is out. There's no point recommending something you can't buy or can't afford.
+`services/irdai_import.py` handles all three formats. It finds the table by its "UIN" and "Product Name" headers and ignores the rest of the page. It cleans up dates and UINs, and upserts each row on the UIN. When I ran it on a real saved IRDAI page, one of the 20 rows had a blank UIN in IRDAI's own table. Rows like that get skipped and listed in the import summary.
 
-**Then the scoring.** Every plan that survives starts at **0.50**, and then:
+IRDAI's list doesn't include premiums or cover details, so a product on its own can't be scored. The admin creates a plan for it, filling in premium, ages and cover, and the plan stores the UIN. With "IRDAI-registered plans only" selected, the scorer joins plans to `irdai_products` and leaves out archived products. The scoring is the same, plus a badge showing the UIN and the insurer's name.
 
-| If you need…      | …and the plan covers it | Points |
-|-------------------|-------------------------|--------|
-| Critical illness  | yes                     | +0.15  |
-| Maternity         | yes                     | +0.15  |
-| Accident          | yes                     | +0.10  |
-| (always)          | coverage vs. the biggest plan in the DB | up to +0.10 |
+## Dashboard
 
-The maximum is 1.00. The top 5 get saved, so you can come back to them later, and the best one appears on your dashboard.
+The dashboard is one request to `/api/dashboard`. It returns the loan count, the outstanding balance, the next EMI, this month's spend against budget, the last 5 expenses and your top insurance match. It also returns three charts: spend by category this year, spend per month for 6 months, and your loan balance for the next 6 months.
 
-What I like most is that every result comes with **reasons**: "Age 18–65 limit met", "Under budget: ₹900/mo", "NO Maternity Cover". A score on its own means nothing to a person. A score with "here's why" is something you can actually decide with.
+A month with no expenses simply doesn't appear in the SQL result, which made the trend line skip months. The route now fills those months in as ₹0.
 
-It's all rule-based. There's no machine learning and nothing is hidden. If you want to change the weights, they're right there in `services/insurance_service.py`.
+## Admin
 
-### Bringing in the real list from IRDAI
+Admins manage plans, the IRDAI catalogue, expense categories and settings, and can see the user list. Every admin route starts with `_require_admin`, which checks that the `user_id` exists and has `role = 'admin'`, and returns a 403 otherwise. Nobody can register as an admin. You promote an account in SQL (the command is in the README).
 
-Here's something that bugged me after a while: my sample plans were made up. They were realistic, but made up. So I wanted the recommendations tied to something real.
+## Database
 
-In India, every health insurance product has to be approved by IRDAI, and each one gets a **UIN**, a unique ID like `BAJHLIP23020V012223`. IRDAI publishes the whole list on its website. That's the most official source there is.
+There are 7 core tables plus `system_settings`, `expense_categories` and `irdai_products`. Foreign keys use `ON DELETE CASCADE`, so deleting a user also deletes their loans, schedule rows, expenses and insurance requests. Money is always `DECIMAL(12,2)`. `emi_schedule` has a unique key on `(loan_id, month_no)`, so a loan can't get two "month 3" rows.
 
-My first plan was to scrape it. Then I checked IRDAI's `robots.txt`, and it blocks every bot, even Google. So scraping it would mean ignoring the site's own rules, which didn't feel right. Instead, ValueTrack asks the admin to do the one step a bot isn't allowed to do: open the page in a normal browser and save it, copy it, or export it. ValueTrack takes it from there.
+For a while `schema.sql` lagged behind `models.py`. `monthly_budget` and `is_fixed` only existed in Python, and the seed file still used the old insurance columns. I only found out by building a fresh database from the repo, which is now something I do before every release. The longer database write-up (ER diagram, normalisation, viva questions) is in `PROJECT_DATABASE_Explanation.docx`.
 
-The import code (`services/irdai_import.py`) accepts all three formats. It finds the table by looking for the "UIN" and "Product Name" headers, so it doesn't care about the rest of the page. It cleans each row and matches products by UIN, so importing the same list twice just updates what's there. When I tried it on the real IRDAI page, one row had no UIN at all, straight from IRDAI. ValueTrack skips rows like that and tells you which ones it skipped.
+## Where to start reading
 
-IRDAI's list says which products exist, not how much they cost. So the admin still adds the premium, ages and cover for each plan, and links it to its UIN. After that, users can tick **"IRDAI-registered plans only"** and the scorer only looks at linked plans whose products aren't archived. The same scoring rules apply, with an extra green badge showing the UIN, plus the insurer's name and approval date on each card.
-
----
-
-## The dashboard
-
-The dashboard makes one API call and gets everything back together: number of loans, total outstanding balance, the next EMI and its due date, this month's spending against your budget, your last 5 expenses, and your top insurance match.
-
-There are three charts too: spending by category for the year, spending per month for the last 6 months, and how your loan balance will drop over the next 6 months.
-
-A small thing that annoyed me: if you spent nothing in a month, that month simply wasn't in the query result, so the chart skipped it and the line looked broken. Now every one of the last 6 months is filled in, with ₹0 where needed.
-
----
-
-## The admin panel
-
-This came later, once I got tired of editing insurance plans directly in MySQL. Admins can add, edit and delete insurance plans, import and search the IRDAI catalogue, manage expense categories, change system settings, and see the list of users.
-
-Every admin endpoint goes through the same `_require_admin` check: is there a `user_id`, does that user exist, and is their role actually `admin`? If not, you get a 403.
-
-You can't sign up as an admin. You register normally and then someone flips your role in the database. The SQL for that is in the README.
-
----
-
-## The database
-
-Seven core tables plus two admin ones (`system_settings`, `expense_categories`). It's mostly in 3NF, with foreign keys everywhere and `ON DELETE CASCADE`, so deleting a user cleans up their loans, EMI rows, expenses and insurance requests automatically.
-
-Money is always `DECIMAL(12,2)`, never `FLOAT`. That's the same lesson as the EMI rounding.
-
-`emi_schedule` is a weak entity. A row only makes sense together with its loan, and `(loan_id, month_no)` is unique, so a loan can't accidentally get two "month 3" rows.
-
-The full write-up, with the ER diagram explanation, normalization and the viva questions I prepared, is in `PROJECT_DATABASE_Explanation.docx`.
-
----
-
-## Things I know aren't perfect
-
-I'd rather be upfront:
-
-- For a while `schema.sql` fell behind the Python models. `monthly_budget` and `is_fixed` were in the code but not in the SQL, and the insurance seed and tests were still written for the old scorer. I caught all of it in v1.0.1 by loading everything into a fresh database. Lesson learned: test the setup from zero, not just on my own machine. Proper migrations with Alembic are next, so this can't sneak up on me again.
-- Auth isn't production-grade (see above).
-- There's no "list all my loans" view yet.
-
-None of these are hard to fix. They're just the things that got pushed back while I was building the parts I cared about more.
-
----
-
-## If you're reading the code for the first time
-
-This is the order I'd go in:
-
-1. `backend/app.py` to see how everything is wired together
-2. `backend/services/emi_service.py`, the heart of the project
-3. `backend/tests/test_emi.py`, to see that heart actually working
-4. `backend/services/insurance_service.py` for the scoring
-5. `frontend/js/api.js` to see how the frontend talks to all of it
-
-That's ValueTrack. It's not huge, but every piece of it is something I had to actually figure out, and I think that shows.
-
-— Arsalan
+1. `backend/app.py`, for how everything is wired up
+2. `backend/services/emi_service.py`
+3. `backend/tests/test_emi.py`
+4. `backend/services/insurance_service.py`
+5. `frontend/js/api.js`

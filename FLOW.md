@@ -1,12 +1,8 @@
-# ValueTrack: How things flow
+# ValueTrack flows
 
-This is the "follow the arrows" version of the project. If [HOW_IT_WORKS.md](HOW_IT_WORKS.md) is me explaining it over chai, this is the whiteboard I'd draw while doing it.
+Diagrams for each part of the app. The reasoning behind them is in [HOW_IT_WORKS.md](HOW_IT_WORKS.md). GitHub renders the Mermaid blocks, and the notes under each diagram say the same thing in words.
 
-GitHub renders the diagrams below automatically. If you're reading this somewhere else, the numbered steps under each one say the same thing.
-
----
-
-## 1. The big picture
+## Overview
 
 ```mermaid
 flowchart LR
@@ -18,16 +14,9 @@ flowchart LR
     F -- serves static files --> B
 ```
 
-There's only one server. Flask does two jobs:
+One Flask process serves the files in `frontend/` and answers `/api/...` with JSON. Routes check the request (is `user_id` there, is it a number) and call a service. The service does the work and the route wraps the result.
 
-1. It serves the frontend files (`index.html`, `dashboard.html`, the CSS and JS) straight from the `frontend/` folder.
-2. It answers everything under `/api/...` with JSON.
-
-Inside the backend I kept a simple rule: **routes talk HTTP, services do the thinking, models talk to the database.** A route reads the request, checks the obvious stuff (is `user_id` there, is it a number), then hands off to a service. The service does the real work and the route wraps the result in JSON.
-
----
-
-## 2. What a user actually does
+## Using the app
 
 ```mermaid
 flowchart TD
@@ -52,9 +41,7 @@ flowchart TD
 3. From the sidebar you move between Loans, Expenses and Insurance. Everything you do there eventually shows up on the dashboard.
 4. Logging out just clears your saved user from the browser and sends you back to the login page.
 
----
-
-## 3. Login, step by step
+## Login
 
 ```mermaid
 sequenceDiagram
@@ -80,9 +67,7 @@ sequenceDiagram
 - A wrong email and a wrong password give the same error ("Invalid email or password"). That's on purpose. I don't want to tell anyone which emails are registered.
 - Registration follows the same path. It checks that the name and email exist, that the password is 8+ characters with at least one number, and that the email isn't already taken. Then it bcrypt-hashes the password (12 rounds) and saves the user.
 
----
-
-## 4. Creating a loan
+## Creating a loan
 
 ```mermaid
 sequenceDiagram
@@ -109,11 +94,9 @@ sequenceDiagram
     JS->>U: renders the schedule table
 ```
 
-The loan and all its EMI rows are saved in **one transaction**. If anything fails halfway, you don't end up with a loan that has 23 of its 60 months.
+The loan and all its EMI rows are saved in one transaction. If anything fails halfway, you don't end up with a loan that has 23 of its 60 months.
 
----
-
-## 5. Logging an expense and the budget
+## Expenses and budget
 
 ```mermaid
 flowchart TD
@@ -132,9 +115,7 @@ flowchart TD
 
 The progress bar is green until you've used 75% of your budget, amber between 75% and 100%, and red once you're over. The dashboard uses the same colours.
 
----
-
-## 6. Getting insurance recommendations
+## Insurance recommendations
 
 ```mermaid
 flowchart TD
@@ -159,7 +140,7 @@ flowchart TD
 
 The best possible score is 1.00. A plan that only passes the age and budget filters starts at 0.50 and can only climb from there. The reasons list is what you see as the little ticks and crosses on each card.
 
-### 6b. With "IRDAI-registered plans only"
+### IRDAI-registered plans only
 
 ```mermaid
 flowchart TD
@@ -181,9 +162,7 @@ flowchart TD
 
 ValueTrack never fetches anything from IRDAI. Their `robots.txt` blocks all bots, so the admin brings the file in by hand.
 
----
-
-## 7. The dashboard call
+## Dashboard
 
 One request, `GET /api/dashboard?user_id=…`, collects everything:
 
@@ -203,9 +182,7 @@ flowchart LR
 
 Months with no spending still show up as ₹0 in the trend chart. Without that the line just skipped months, which looked broken.
 
----
-
-## 8. Admin flow
+## Admin
 
 ```mermaid
 flowchart TD
@@ -221,9 +198,7 @@ flowchart TD
 
 Every admin endpoint runs the same check first. The check looks up the user from the `user_id` sent with the request and rejects anyone who isn't an admin.
 
----
-
-## 9. How the tables connect
+## Tables
 
 ```mermaid
 erDiagram
