@@ -2,6 +2,21 @@
 
 All notable changes to ValueTrack, newest first.
 
+## [1.2.0] - 2026-05-07
+
+### Changed
+- New look for every page, based on an Indian bank passbook: guilloche cover and header, ruled ledgers, typewriter figures, PAID and over-budget stamps, and insurance results shown as certificates
+- Top tabs replace the sidebar; plain text replaces the icon font
+- Amounts use Indian digit grouping and dates read like "15 Nov 2026"
+- Insurance reasons reworded ("Within budget at ₹1,000 a month", "No maternity cover")
+
+### Fixed
+- The dashboard now draws its three charts (the data was already there)
+- The expenses budget bar compares only this month's spending, using the same 75% / 100% thresholds as the dashboard
+- The register form asked for 6 characters; the server needs 8 with a number
+- The loans page can open a saved loan by its number, and jumps to the next unpaid EMI
+- Login's "Remember me" and the eye icon did nothing; the password Show button now works
+
 ## [1.1.0] - 2026-05-06
 
 ### Added

@@ -38,7 +38,7 @@ flowchart TD
 
 1. You land on the login/register page.
 2. After you log in, the response tells the frontend your role. Normal users go to the dashboard and admins go to the admin panel.
-3. From the sidebar you move between Loans, Expenses and Insurance. Everything you do there eventually shows up on the dashboard.
+3. The tabs along the top switch between Overview, Loans, Expenses and Insurance. Whatever you add shows up on the Overview.
 4. Logging out just clears your saved user from the browser and sends you back to the login page.
 
 ## Login
@@ -135,7 +135,7 @@ flowchart TD
     L --> M[Sort by score, keep top 5]
     X --> M
     M --> N[Save top 5 in insurance_result]
-    N --> O[Return plans + reasons<br/>e.g. 'Under budget: ₹900/mo']
+    N --> O[Return plans + reasons<br/>e.g. 'Within budget at ₹900 a month']
 ```
 
 The best possible score is 1.00. A plan that only passes the age and budget filters starts at 0.50 and can only climb from there. The reasons list is what you see as the little ticks and crosses on each card.
@@ -145,7 +145,7 @@ The best possible score is 1.00. A plan that only passes the age and budget filt
 ```mermaid
 flowchart TD
     A[Admin opens irdai.gov.in/health-insurance-products<br/>in a normal browser] --> B[Saves the page / copies rows / exports CSV]
-    B --> C[Admin panel: IRDAI Catalogue → Import]
+    B --> C[Admin → IRDAI list → Import]
     C --> D[POST /api/admin/irdai/import]
     D --> E[Find the table by its UIN + Product Name headers]
     E --> F{Row has UIN,<br/>insurer, product?}
@@ -153,11 +153,11 @@ flowchart TD
     F -- yes --> H[Upsert into irdai_products<br/>matched on UIN]
     H --> I[Admin clicks Create plan<br/>adds premium, ages, cover]
     I --> J[insurance row saved with irdai_uin]
-    J --> K[User picks Plan Source:<br/>IRDAI-registered plans only]
+    J --> K[User picks<br/>Only IRDAI-registered plans]
     K --> L[POST /api/insurance/request<br/>source = irdai]
     L --> M[Only plans joined to a<br/>non-archived IRDAI product]
     M --> N[Same scoring as above]
-    N --> O[Results show insurer, UIN,<br/>approval date + green badge]
+    N --> O[Results show insurer, UIN,<br/>approval date]
 ```
 
 ValueTrack never fetches anything from IRDAI. Their `robots.txt` blocks all bots, so the admin brings the file in by hand.

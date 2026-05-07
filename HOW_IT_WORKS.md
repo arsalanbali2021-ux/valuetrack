@@ -65,7 +65,7 @@ Age and budget are hard filters. If you're outside the plan's age range, or the 
 
 The maximum is 1.00. The top 5 are saved, and the best one shows up on the dashboard.
 
-Each result also carries a list of reasons, such as "Age 18-65 limit met", "Under budget: ₹900/mo" or "NO Maternity Cover". A bare 0.85 doesn't tell you why a plan came first. The reasons do. The weights are plain numbers in `services/insurance_service.py`, so changing them is a one-line edit.
+Each result also carries a list of reasons, such as "Age limit 18–65 fits", "Within budget at ₹900 a month" or "No maternity cover". A bare 0.85 doesn't tell you why a plan came first. The reasons do. The weights are plain numbers in `services/insurance_service.py`, so changing them is a one-line edit.
 
 ### The IRDAI list
 
@@ -75,7 +75,7 @@ Every health product sold in India is approved by IRDAI and gets a UIN, an ID li
 
 `services/irdai_import.py` handles all three formats. It finds the table by its "UIN" and "Product Name" headers and ignores the rest of the page. It cleans up dates and UINs, and upserts each row on the UIN. When I ran it on a real saved IRDAI page, one of the 20 rows had a blank UIN in IRDAI's own table. Rows like that get skipped and listed in the import summary.
 
-IRDAI's list doesn't include premiums or cover details, so a product on its own can't be scored. The admin creates a plan for it, filling in premium, ages and cover, and the plan stores the UIN. With "IRDAI-registered plans only" selected, the scorer joins plans to `irdai_products` and leaves out archived products. The scoring is the same, plus a badge showing the UIN and the insurer's name.
+IRDAI's list doesn't include premiums or cover details, so a product on its own can't be scored. The admin creates a plan for it, filling in premium, ages and cover, and the plan stores the UIN. With "Only IRDAI-registered plans" picked, the scorer joins plans to `irdai_products` and leaves out archived products. The scoring is the same, plus an extra reason line with the UIN, and the insurer's name under the plan.
 
 ## Dashboard
 

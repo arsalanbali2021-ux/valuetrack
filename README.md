@@ -16,7 +16,7 @@ What it does right now:
 
 - Creates a loan and generates its month-by-month EMI schedule. A ₹5,00,000 loan at 8.5% for 60 months comes to ₹10,258.27 a month, and the last row ends at exactly ₹0.00.
 - Tracks expenses, with a monthly budget and a bar that turns amber at 75% and red once you go over.
-- Takes your age, budget and what you need covered (critical illness, maternity, accident), ranks every plan, keeps the top 5, and gives a reason for each, like "Under budget: ₹900/mo" or "NO Maternity Cover".
+- Takes your age, budget and what you need covered (critical illness, maternity, accident), ranks every plan, keeps the top 5, and gives a reason for each, like "Within budget at ₹900 a month" or "No maternity cover".
 - Has a dashboard with outstanding balance, next EMI, this month's spend and three small charts.
 - Has an admin panel for plans, expense categories and settings. It can also import IRDAI's list of approved health products (more on that below).
 
@@ -27,6 +27,8 @@ The longer explanation is in [HOW_IT_WORKS.md](HOW_IT_WORKS.md), and the request
 The backend is Flask + SQLAlchemy on MySQL, and the frontend is plain HTML, CSS and JavaScript. There's no React and no build step. Flask serves the pages as well as the API, so there's only one thing to run. I wanted it to run on any machine with Python and MySQL, including a college lab PC, without setting up anything else.
 
 All the money math uses Python's `Decimal`, not floats. The final EMI is calculated separately so the balance closes at zero instead of something like `-0.03`. The insurance score is a few fixed rules (age and budget act as hard filters, then points for each cover you need), so you can read `services/insurance_service.py` and see exactly why a plan ranked where it did. I didn't want an ML model I couldn't explain in a viva.
+
+The look is based on an Indian bank passbook. That's on purpose, because an EMI schedule is basically a passbook page. So the app has a pale security-paper background, guilloche linework on the cover and header, ruled ledger tables with a red margin line, typewriter figures for every amount, and rubber stamps for "PAID" and "Over budget". Money is shown with Indian grouping (₹4,88,855.08), not ₹488,855.08. The fonts are Tiro Devanagari Hindi for headings, Mukta for text and Courier Prime for figures. The charts are plain HTML and CSS, with no chart library.
 
 ## Things that changed along the way
 
@@ -129,12 +131,12 @@ Every health insurance product sold in India has to be approved by IRDAI, and ea
 
 My first idea was to scrape that page. Then I checked https://irdai.gov.in/robots.txt, and it says `Disallow: /` for every bot, even Googlebot. So ValueTrack never contacts IRDAI on its own. You open the page in your browser and bring the table over yourself:
 
-1. Go to Admin Panel → IRDAI Catalogue.
+1. Go to Admin → IRDAI list.
 2. Open the IRDAI page in another tab. Filter it if you want, and show as many rows per page as it lets you.
 3. Either save the page (Ctrl+S, "Webpage, HTML only") and upload it, or select the rows and paste them in. You can also go through Excel and upload a CSV.
 4. Click Import. Products are matched on UIN, so importing the same list again only updates it.
 
-The list only tells you a product exists. It doesn't give the premium or what it covers. So for each product you want to recommend, click "Create plan" and fill those in. On the Insurance page, users can then choose "IRDAI-registered plans only". The results show the insurer, the UIN and the approval date, and archived products are skipped.
+The list only tells you a product exists. It doesn't give the premium or what it covers. So for each product you want to recommend, click "Create plan" and fill those in. On the Insurance page, users can then pick "Only IRDAI-registered plans". The results show the insurer, the UIN and the approval date, and archived products are skipped.
 
 The data is only as recent as your last import. Re-import every few months.
 
