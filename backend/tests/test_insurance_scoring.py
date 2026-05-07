@@ -69,8 +69,8 @@ def test_base_score_with_no_needs():
     policy = _make_policy(coverage=500000)
     score, reasons = _score(policy, max_cov=500000)
     assert abs(score - 0.60) < 1e-9
-    assert any('limit met' in r['text'] for r in reasons)
-    assert any('Under budget' in r['text'] for r in reasons)
+    assert any('Age limit' in r['text'] for r in reasons)
+    assert any('Within budget' in r['text'] for r in reasons)
 
 
 def test_all_needs_covered_hits_max_score():
@@ -95,7 +95,7 @@ def test_missing_cover_gives_no_points_and_says_so():
     policy = _make_policy(coverage=0, maternity=0)
     score, reasons = _score(policy, mat=True)
     assert abs(score - 0.50) < 1e-9
-    assert any(r['text'] == 'NO Maternity Cover' for r in reasons)
+    assert any(r['text'] == 'No maternity cover' for r in reasons)
 
 
 def test_coverage_bonus_scales_with_coverage():

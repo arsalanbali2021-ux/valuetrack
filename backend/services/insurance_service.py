@@ -24,8 +24,8 @@ def _calculate_score(policy: Insurance, age: int,
     if premium > monthly_budget:
          return 0.0, []
 
-    explanations.append({'icon': 'check_circle', 'text': f'Age {policy.min_age}-{policy.max_age} limit met'})
-    explanations.append({'icon': 'payments', 'text': f'Under budget: ₹{premium}/mo'})
+    explanations.append({'icon': 'check_circle', 'text': f'Age limit {policy.min_age}–{policy.max_age} fits'})
+    explanations.append({'icon': 'payments', 'text': f'Within budget at ₹{premium:,.0f} a month'})
 
     score = 0.5
 
@@ -33,27 +33,27 @@ def _calculate_score(policy: Insurance, age: int,
     if needs_critical_illness:
         if policy.has_critical_illness:
             score += 0.15
-            explanations.append({'icon': 'health_and_safety', 'text': 'Critical Illness Covered'})
+            explanations.append({'icon': 'health_and_safety', 'text': 'Covers critical illness'})
         else:
-            explanations.append({'icon': 'error', 'text': 'NO Critical Illness Cover'})
+            explanations.append({'icon': 'error', 'text': 'No critical illness cover'})
     elif policy.has_critical_illness:
-        explanations.append({'icon': 'info', 'text': 'Bonus: Critical Illness Covered'})
+        explanations.append({'icon': 'info', 'text': 'Also covers critical illness'})
 
     # Scoring Criteria: Maternity
     if needs_maternity:
         if policy.has_maternity:
             score += 0.15
-            explanations.append({'icon': 'pregnant_woman', 'text': 'Maternity Covered'})
+            explanations.append({'icon': 'pregnant_woman', 'text': 'Covers maternity'})
         else:
-            explanations.append({'icon': 'error', 'text': 'NO Maternity Cover'})
+            explanations.append({'icon': 'error', 'text': 'No maternity cover'})
             
     # Scoring Criteria: Accident
     if needs_accident:
         if policy.has_accident:
             score += 0.10
-            explanations.append({'icon': 'personal_injury', 'text': 'Accident Covered'})
+            explanations.append({'icon': 'personal_injury', 'text': 'Covers accidents'})
         else:
-             explanations.append({'icon': 'error', 'text': 'NO Accident Cover'})
+             explanations.append({'icon': 'error', 'text': 'No accident cover'})
 
     # Coverage Bonus
     coverage = float(policy.coverage_amount)
@@ -80,8 +80,8 @@ def _irdai_explanation(policy, irdai_map):
     if not product:
         return None
     if product.is_archived:
-        return {'icon': 'warning', 'text': f'IRDAI: product archived (UIN {product.uin})'}
-    return {'icon': 'verified', 'text': f'IRDAI-registered · UIN {product.uin}'}
+        return {'icon': 'warning', 'text': f'Archived by IRDAI (UIN {product.uin})'}
+    return {'icon': 'verified', 'text': f'Registered with IRDAI, UIN {product.uin}'}
 
 
 def _result_dict(policy, score, rank, explanations, irdai_map):
