@@ -1,273 +1,112 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-IN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ValueTrack — Dashboard</title>
-    <meta name="description" content="Your financial overview at a glance. Track loans, expenses, and insurance.">
+    <title>Overview – ValueTrack</title>
+    <link rel="icon" href="img/logo.svg">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div class="app-layout">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <div class="sidebar-brand-icon">
-                    <span class="material-symbols-outlined">account_balance_wallet</span>
-                </div>
-                <div>
-                    <div class="sidebar-brand-title">ValueTrack</div>
-                    <div class="sidebar-brand-sub">Wealth Management</div>
-                </div>
+    <main class="page">
+        <div class="account">
+            <div>
+                <span class="label" id="today"></span>
+                <h1 id="greeting">Hello</h1>
             </div>
-            <nav class="sidebar-nav">
-                <a href="dashboard.html" class="active">
-                    <span class="material-symbols-outlined">dashboard</span>
-                    <span>Dashboard</span>
-                </a>
-                <a href="loans.html">
-                    <span class="material-symbols-outlined">payments</span>
-                    <span>Loans & EMI</span>
-                </a>
-                <a href="expenses.html">
-                    <span class="material-symbols-outlined">receipt_long</span>
-                    <span>Expenses</span>
-                </a>
-                <a href="insurance.html">
-                    <span class="material-symbols-outlined">verified_user</span>
-                    <span>Insurance</span>
-                </a>
-                <a href="admin.html" class="admin-link" id="adminLink" style="display:none;">
-                    <span class="material-symbols-outlined">admin_panel_settings</span>
-                    <span>Admin Panel</span>
-                </a>
-            </nav>
-            <div class="sidebar-footer">
-                <div class="sidebar-user" onclick="logout()" style="cursor:pointer;" title="Click to logout">
-                    <div class="sidebar-user-avatar" id="userAvatar">
-                        <span class="material-symbols-outlined" style="font-size:1.25rem;">person</span>
-                    </div>
-                    <div style="flex:1; min-width:0;">
-                        <div class="sidebar-user-name" id="userName">User</div>
-                        <div class="sidebar-user-role">ValueTrack User</div>
-                    </div>
-                    <span class="material-symbols-outlined" style="font-size:1.125rem; color:var(--color-text-muted);">logout</span>
+            <dl>
+                <div><dt class="label">Customer no.</dt><dd id="custNo">—</dd></div>
+                <div><dt class="label">Monthly budget</dt><dd id="custBudget">—</dd></div>
+                <div><dt class="label">Loans running</dt><dd id="custLoans">—</dd></div>
+            </dl>
+        </div>
+
+        <div class="cols cols-wide-left">
+            <section class="sheet">
+                <div class="sheet-head">
+                    <h2 id="monthTitle">This month</h2>
+                    <a href="expenses.html" class="small">Add an expense</a>
                 </div>
+                <div class="big-figure" id="monthSpent">—</div>
+                <p class="month-note" id="monthNote">Loading…</p>
+                <div class="meter" id="monthMeter" hidden>
+                    <div class="meter-fill" id="monthMeterFill"></div>
+                    <div class="meter-mark" title="75% of budget"></div>
+                </div>
+                <div class="meter-scale" id="monthScale" hidden><span>₹0</span><span>75%</span><span id="monthScaleMax"></span></div>
+            </section>
+
+            <section class="sheet">
+                <div class="sheet-head"><h2>At a glance</h2></div>
+                <ul class="facts">
+                    <li>
+                        <span class="what">Next EMI<small id="nextEmiWhen">—</small></span>
+                        <span class="value" id="nextEmi">—</span>
+                    </li>
+                    <li>
+                        <span class="what">Still owed on loans<small id="loanCount">—</small></span>
+                        <span class="value" id="owed">—</span>
+                    </li>
+                    <li>
+                        <span class="what">Best insurance match<small id="planType">—</small></span>
+                        <span class="value" id="topPlan">—</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+
+        <div class="cols cols-2" style="margin-top:1.5rem;">
+            <section class="sheet">
+                <div class="sheet-head">
+                    <h2>Spending, last 6 months</h2>
+                    <p>striped bar = this month so far</p>
+                </div>
+                <div class="bars" id="trendBars"></div>
+                <div class="bar-labels" id="trendLabels"></div>
+            </section>
+
+            <section class="sheet">
+                <div class="sheet-head">
+                    <h2>Where it went</h2>
+                    <p id="splitYear"></p>
+                </div>
+                <ul class="hbars" id="categorySplit"><li class="muted">Nothing yet.</li></ul>
+            </section>
+        </div>
+
+        <section class="sheet" id="loanOutlook" style="margin-top:1.5rem;" hidden>
+            <div class="sheet-head">
+                <h2>Loan balance over the next 6 months</h2>
+                <p>total across all your loans, at the end of each month</p>
             </div>
-        </aside>
+            <div class="bars" id="loanBars"></div>
+            <div class="bar-labels" id="loanLabels"></div>
+        </section>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Top Header -->
-            <header class="top-header">
-                <h2 class="top-header-title">Dashboard</h2>
-                <div class="top-header-actions">
-                </div>
-            </header>
-
-            <!-- Scrollable Content -->
-            <div class="content-area">
-                <div class="content-inner" style="display:flex; flex-direction:column; gap:2rem;">
-
-                    <!-- Summary Stat Cards -->
-                    <div class="grid grid-cols-4 gap-6" id="statsGrid">
-                        <!-- Total Loans -->
-                        <div class="card stat-card">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="stat-icon blue">
-                                    <span class="material-symbols-outlined">account_balance</span>
-                                </div>
-                                <span class="trend-badge up">
-                                    <span class="material-symbols-outlined">trending_up</span>Active
-                                </span>
-                            </div>
-                            <p class="stat-label">Total Loans</p>
-                            <h3 class="stat-value" id="totalLoans">—</h3>
-                            <p class="stat-sub">Active loan accounts</p>
-                        </div>
-
-                        <!-- Outstanding Balance -->
-                        <div class="card stat-card">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="stat-icon amber">
-                                    <span class="material-symbols-outlined">pending_actions</span>
-                                </div>
-                            </div>
-                            <p class="stat-label">Outstanding Principal</p>
-                            <h3 class="stat-value" id="outstandingPrincipal">—</h3>
-                            <p class="stat-sub">Remaining balance</p>
-                        </div>
-
-                        <!-- Monthly Expenses -->
-                        <div class="card stat-card">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="stat-icon indigo">
-                                    <span class="material-symbols-outlined">shopping_cart</span>
-                                </div>
-                            </div>
-                            <p class="stat-label">Monthly Expenses</p>
-                            <h3 class="stat-value" id="monthlyExpenses">—</h3>
-                            <div class="score-bar-container" style="margin-top:0.5rem; margin-bottom:0.25rem; height:4px; background:var(--color-surface); border:1px solid var(--color-border);">
-                                <div id="dashboardBudgetBar" class="score-bar" style="width:0%; background-color:var(--color-primary); transition:width 0.3s ease;"></div>
-                            </div>
-                            <p class="stat-sub" id="budgetStatusText">Current month total</p>
-                        </div>
-
-                        <!-- Next EMI -->
-                        <div class="card stat-card">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="stat-icon emerald">
-                                    <span class="material-symbols-outlined">event_upcoming</span>
-                                </div>
-                                <span class="trend-badge neutral" id="nextEmiTag">UPCOMING</span>
-                            </div>
-                            <p class="stat-label">Next EMI Payment</p>
-                            <h3 class="stat-value" id="nextEmiAmount">—</h3>
-                            <p class="stat-sub" id="nextEmiDate"></p>
-                        </div>
-                    </div>
-
-
-
-                    <!-- Recent Activity Table -->
-                    <div class="card-flat">
-                        <div class="p-6 flex items-center justify-between" style="border-bottom:1px solid var(--color-border);">
-                            <h4 style="font-size:1.125rem; font-weight:700;">Recent Activity</h4>
-                            <a href="expenses.html" style="font-size:0.875rem; font-weight:600;">View All Transactions</a>
-                        </div>
-                        <div class="table-wrap">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Transaction</th>
-                                        <th>Category</th>
-                                        <th style="text-align:right;">Amount</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="activityTableBody">
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted" style="padding:2rem;">Loading dashboard data...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Insurance Card -->
-                    <div id="insuranceCard" class="card">
-                        <div class="flex items-center gap-4">
-                            <div class="stat-icon blue" style="width:3rem; height:3rem;">
-                                <span class="material-symbols-outlined">shield</span>
-                            </div>
-                            <div>
-                                <h3>Top Insurance Match</h3>
-                                <p class="text-sm text-muted">Run an insurance request to see your top match here.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
+        <section class="sheet flush ledger" style="margin-top:1.5rem;">
+            <div class="sheet-head">
+                <h2>Latest entries</h2>
+                <a href="expenses.html" class="small">All expenses</a>
             </div>
-        </main>
-    </div>
-
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Particulars</th>
+                            <th>Category</th>
+                            <th class="num">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentBody">
+                        <tr><td colspan="4" class="empty">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
 
     <script src="js/api.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            const user = requireAuth();
-            if (!user) return;
-
-            document.getElementById('userName').textContent = user.name;
-
-            // Show admin link if admin
-            if (user.role === 'admin') {
-                const adminLink = document.getElementById('adminLink');
-                if (adminLink) adminLink.style.display = '';
-            }
-
-            try {
-                const data = await DashboardAPI.get(user.user_id);
-
-                document.getElementById('totalLoans').textContent = data.total_loans;
-                document.getElementById('outstandingPrincipal').textContent =
-                    `₹${data.total_outstanding_principal.toLocaleString()}`;
-
-                // Calculate budget progress bar on Dashboard
-                let expText = `₹${data.monthly_expenses.toLocaleString()}`;
-                if (data.monthly_budget > 0) {
-                    expText += ` / ₹${data.monthly_budget.toLocaleString()}`;
-                    const pct = Math.min((data.monthly_expenses / data.monthly_budget) * 100, 100);
-                    const bar = document.getElementById('dashboardBudgetBar');
-                    bar.style.width = pct + '%';
-                    if (pct >= 100) bar.style.backgroundColor = 'var(--color-danger)';
-                    else if (pct > 75) bar.style.backgroundColor = 'var(--color-warning)';
-                    else bar.style.backgroundColor = 'var(--color-success)';
-
-                    document.getElementById('budgetStatusText').textContent = 'Current month budget';
-                } else {
-                    document.getElementById('budgetStatusText').textContent = 'No monthly budget set';
-                }
-                
-                document.getElementById('monthlyExpenses').textContent = expText;
-
-                if (data.next_emi) {
-                    document.getElementById('nextEmiAmount').textContent =
-                        `₹${data.next_emi.amount.toFixed(2)}`;
-                    document.getElementById('nextEmiDate').textContent =
-                        `Due: ${data.next_emi.due_date}`;
-                } else {
-                    document.getElementById('nextEmiAmount').textContent = 'None';
-                    document.getElementById('nextEmiDate').textContent = 'No upcoming payments';
-                }
-
-                if (data.top_insurance) {
-                    document.getElementById('insuranceCard').innerHTML = `
-                        <div class="flex items-center gap-4" style="flex-wrap:wrap;">
-                            <div class="stat-icon blue" style="width:3rem; height:3rem;">
-                                <span class="material-symbols-outlined">verified_user</span>
-                            </div>
-                            <div style="flex:1; min-width:150px;">
-                                <h3>${data.top_insurance.plan_name}</h3>
-                                <p class="text-sm text-muted">${data.top_insurance.type} Plan</p>
-                            </div>
-                            <div style="text-align:right;">
-                                <div style="font-size:1.5rem; font-weight:700; color:var(--color-primary);">
-                                    ${(data.top_insurance.rank_score * 100).toFixed(1)}%
-                                </div>
-                                <div class="text-xs text-muted">Match Score</div>
-                            </div>
-                        </div>
-                        <div class="score-bar-container" style="margin-top:1rem;">
-                            <div class="score-bar" style="width:${(data.top_insurance.rank_score * 100)}%"></div>
-                        </div>
-                    `;
-                }
-
-                // Populate Recent Activity Table
-                const tbody = document.getElementById('activityTableBody');
-                if (data.recent_activity && data.recent_activity.length > 0) {
-                    tbody.innerHTML = data.recent_activity.map(exp => `
-                        <tr>
-                            <td>${new Date(exp.date).toLocaleDateString()}</td>
-                            <td>${exp.description || '—'}</td>
-                            <td><span class="badge ${exp.is_fixed ? 'badge-primary' : 'badge-neutral'}">${exp.category} ${exp.is_fixed ? ' (Fixed)' : ''}</span></td>
-                            <td style="text-align:right; font-weight:600;">₹${exp.amount.toLocaleString()}</td>
-                            <td><span class="badge badge-success">Completed</span></td>
-                        </tr>
-                    `).join('');
-                } else {
-                    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding:2rem;">No recent transactions found.</td></tr>`;
-                }
-
-
-
-            } catch (error) {
-                console.error('Dashboard load error:', error);
-            }
-        });
-    </script>
+    <script src="js/dashboard.js"></script>
 </body>
 </html>

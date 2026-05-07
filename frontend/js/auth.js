@@ -1,98 +1,77 @@
-/**
- * ValueTrack — Auth Page Logic
- * Handles login/register form switching, validation, and API calls.
- */
+// Login / register page.
 
 document.addEventListener('DOMContentLoaded', () => {
-    // If already logged in, redirect based on role
-    const user = getUser();
-    if (user) {
-        window.location.href = user.role === 'admin' ? 'admin.html' : 'dashboard.html';
+    // Already logged in? Skip straight past this page.
+    const existing = getUser();
+    if (existing) {
+        window.location.href = existing.role === 'admin' ? 'admin.html' : 'dashboard.html';
         return;
     }
 
-    // Tab switching
-    const tabs = document.querySelectorAll('.auth-tab');
-    const forms = document.querySelectorAll('.auth-form');
+    const $ = id => document.getElementById(id);
 
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const target = tab.dataset.target;
-            tabs.forEach(t => t.classList.remove('active'));
-            forms.forEach(f => f.classList.remove('active'));
-            tab.classList.add('active');
-            document.getElementById(target).classList.add('active');
+    // Tabs
+    const tabs = document.querySelectorAll('.tabs button');
+    function openTab(targetId) {
+        tabs.forEach(t => t.classList.toggle('active', t.dataset.target === targetId));
+        document.querySelectorAll('.auth-form').forEach(f => f.classList.toggle('hidden', f.id !== targetId));
+    }
+    tabs.forEach(tab => tab.addEventListener('click', () => openTab(tab.dataset.target)));
+
+    // Show / hide password
+    document.querySelectorAll('.pw-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const input = $(btn.dataset.for);
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            btn.textContent = show ? 'Hide' : 'Show';
         });
     });
 
-    // Login form
-    const loginForm = document.getElementById('loginForm');
-    const loginAlert = document.getElementById('loginAlert');
-
-    loginForm.addEventListener('submit', async (e) => {
+    // Log in
+    $('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const btn = loginForm.querySelector('button[type="submit"]');
-        const email = document.getElementById('loginEmail').value.trim();
-        const password = document.getElementById('loginPassword').value;
-
-        if (!email || !password) {
-            showAlert(loginAlert, 'Please fill in all fields.', 'danger');
-            return;
-        }
+        const btn = e.target.querySelector('button[type="submit"]');
+        const email = $('loginEmail').value.trim();
+        const password = $('loginPassword').value;
+        if (!email || !password) return showAlert($('loginAlert'), 'Enter your email and password.');
 
         showLoading(btn);
         try {
             const result = await AuthAPI.login(email, password);
-            // Store user info
             localStorage.setItem('valuetrack_user', JSON.stringify(result));
-            showAlert(loginAlert, 'Login successful! Redirecting...', 'success');
-            const redirectUrl = result.role === 'admin' ? 'admin.html' : 'dashboard.html';
-            setTimeout(() => { window.location.href = redirectUrl; }, 500);
+            window.location.href = result.role === 'admin' ? 'admin.html' : 'dashboard.html';
         } catch (error) {
-            showAlert(loginAlert, error.message, 'danger');
-        } finally {
+            showAlert($('loginAlert'), escapeHtml(error.message));
             hideLoading(btn);
         }
     });
 
-    // Register form
-    const registerForm = document.getElementById('registerForm');
-    const registerAlert = document.getElementById('registerAlert');
-
-    registerForm.addEventListener('submit', async (e) => {
+    // Register (same rules as the server: 8+ characters, at least one digit)
+    $('registerForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const btn = registerForm.querySelector('button[type="submit"]');
-        const name = document.getElementById('registerName').value.trim();
-        const email = document.getElementById('registerEmail').value.trim();
-        const password = document.getElementById('registerPassword').value;
-        const confirm = document.getElementById('registerConfirm').value;
+        const btn = e.target.querySelector('button[type="submit"]');
+        const alertBox = $('registerAlert');
+        const name = $('registerName').value.trim();
+        const email = $('registerEmail').value.trim();
+        const password = $('registerPassword').value;
 
-        if (!name || !email || !password) {
-            showAlert(registerAlert, 'Please fill in all fields.', 'danger');
-            return;
+        if (!name || !email || !password) return showAlert(alertBox, 'All fields are needed.');
+        if (password.length < 8 || !/\d/.test(password)) {
+            return showAlert(alertBox, 'The password needs at least 8 characters and one number.');
         }
-
-        if (password.length < 6) {
-            showAlert(registerAlert, 'Password must be at least 6 characters.', 'danger');
-            return;
-        }
-
-        if (password !== confirm) {
-            showAlert(registerAlert, 'Passwords do not match.', 'danger');
-            return;
-        }
+        if (password !== $('registerConfirm').value) return showAlert(alertBox, "The two passwords don't match.");
 
         showLoading(btn);
         try {
             await AuthAPI.register(name, email, password);
-            showAlert(registerAlert, 'Registration successful! You can now login.', 'success');
-            // Switch to login tab
-            setTimeout(() => {
-                tabs[0].click();
-                document.getElementById('loginEmail').value = email;
-            }, 1500);
+            e.target.reset();
+            openTab('loginSection');
+            $('loginEmail').value = email;
+            $('loginPassword').focus();
+            showAlert($('loginAlert'), 'Account created. Log in with your new password.', 'success');
         } catch (error) {
-            showAlert(registerAlert, error.message, 'danger');
+            showAlert(alertBox, escapeHtml(error.message));
         } finally {
             hideLoading(btn);
         }

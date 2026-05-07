@@ -1,9 +1,7 @@
-/**
- * ValueTrack — API Wrapper
- * Centralized Fetch API helper for all backend calls.
- */
+// ValueTrack: every call to the backend goes through apiCall().
 
-const API_BASE = 'http://127.0.0.1:5000/api';
+// Same origin when Flask serves the pages; fall back to the dev server for file://
+const API_BASE = location.protocol.startsWith('http') ? '/api' : 'http://127.0.0.1:5000/api';
 
 /**
  * Generic API call wrapper with error handling.
@@ -213,7 +211,8 @@ const AdminAPI = {
     }
 };
 
-// ---- Utility: escape text before putting it into HTML ----
+// ---- Formatting ----
+
 function escapeHtml(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -223,19 +222,64 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
-// ---- Utility: check admin role ----
-function isAdmin() {
-    const user = getUser();
-    return user && user.role === 'admin';
+// ₹4,88,855.08 — Indian grouping (lakhs, crores)
+function formatINR(amount, decimals = 2) {
+    const n = Number(amount) || 0;
+    return '₹' + n.toLocaleString('en-IN', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    });
 }
 
-// ---- Utility: show/hide loading ----
+// "2026-11-15" -> "15 Nov 2026". Parsed by hand so the timezone can't shift the day.
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function formatDate(iso) {
+    if (!iso) return '—';
+    const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
+    if (!y || !m || !d) return escapeHtml(iso);
+    return `${d} ${MONTHS[m - 1]} ${y}`;
+}
+
+// ---- Shared page header ----
+
+const NAV = [
+    ['dashboard', 'dashboard.html', 'Overview'],
+    ['loans', 'loans.html', 'Loans'],
+    ['expenses', 'expenses.html', 'Expenses'],
+    ['insurance', 'insurance.html', 'Insurance'],
+];
+
+function mountHeader(active) {
+    const user = getUser();
+    const links = [...NAV];
+    if (user && user.role === 'admin') links.push(['admin', 'admin.html', 'Admin']);
+
+    const header = document.createElement('header');
+    header.className = 'site-head';
+    header.innerHTML = `
+        <div class="site-head-inner">
+            <a class="wordmark" href="dashboard.html"><img src="img/logo.svg" alt="">ValueTrack</a>
+            <nav class="site-nav">
+                ${links.map(([key, href, label]) =>
+                    `<a href="${href}"${key === active ? ' class="active" aria-current="page"' : ''}>${label}</a>`
+                ).join('')}
+            </nav>
+            <div class="site-user">
+                <span>${escapeHtml(user ? user.name : '')}</span>
+                <button type="button" id="logoutBtn">Log out</button>
+            </div>
+        </div>`;
+    document.body.prepend(header);
+    header.querySelector('#logoutBtn').addEventListener('click', logout);
+}
+
+// ---- Buttons and notices ----
+
 function showLoading(btn) {
-    if (btn) {
-        btn.dataset.originalText = btn.innerHTML;
-        btn.innerHTML = '<span class="spinner"></span> Loading...';
-        btn.disabled = true;
-    }
+    if (!btn) return;
+    btn.dataset.originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner"></span> Working…';
+    btn.disabled = true;
 }
 
 function hideLoading(btn) {
@@ -245,25 +289,25 @@ function hideLoading(btn) {
     }
 }
 
-// ---- Utility: show alert message ----
+// message may contain HTML we built ourselves; escape anything from the user first
 function showAlert(container, message, type = 'danger') {
-    const icon = type === 'success' ? 'check_circle' : type === 'info' ? 'info' : 'error';
-    container.innerHTML = `
-        <div class="alert alert-${type}">
-            <span class="material-symbols-outlined">${icon}</span>
-            ${message}
-        </div>
-    `;
-    // Auto-remove after 5 seconds for success
+    if (!container) return;
+    container.innerHTML = `<div class="alert alert-${type}" role="${type === 'danger' ? 'alert' : 'status'}">${message}</div>`;
     if (type === 'success') {
         setTimeout(() => { container.innerHTML = ''; }, 5000);
     }
 }
 
-// ---- Utility: get logged-in user ----
+// ---- Session ----
+
 function getUser() {
     const user = localStorage.getItem('valuetrack_user');
     return user ? JSON.parse(user) : null;
+}
+
+function isAdmin() {
+    const user = getUser();
+    return user && user.role === 'admin';
 }
 
 function requireAuth() {

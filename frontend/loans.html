@@ -1,177 +1,96 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-IN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ValueTrack — Loans & EMI</title>
-    <meta name="description" content="Create loans and view EMI amortization schedules.">
+    <title>Loans – ValueTrack</title>
+    <link rel="icon" href="img/logo.svg">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div class="app-layout">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <div class="sidebar-brand-icon">
-                    <span class="material-symbols-outlined">account_balance_wallet</span>
-                </div>
-                <div>
-                    <div class="sidebar-brand-title">ValueTrack</div>
-                    <div class="sidebar-brand-sub">Wealth Management</div>
-                </div>
+    <main class="page">
+        <div class="page-title">
+            <h1>Loans</h1>
+            <p>Enter a loan and you get the full repayment schedule: what each EMI pays in interest, what it takes off the loan, and what's left after.</p>
+        </div>
+
+        <div class="cols cols-wide-left">
+            <section class="sheet">
+                <div class="sheet-head"><h2>New loan</h2></div>
+                <div id="loanAlert"></div>
+                <form id="loanForm">
+                    <div class="fields fields-2">
+                        <div class="field">
+                            <label for="principal">Loan amount</label>
+                            <div class="with-unit">
+                                <span class="unit left">₹</span>
+                                <input class="form-input" type="number" id="principal" step="0.01" min="1" placeholder="500000" required>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="interestRate">Interest rate, per year</label>
+                            <div class="with-unit">
+                                <input class="form-input pad-right" type="number" id="interestRate" step="0.01" min="0" placeholder="8.5" required>
+                                <span class="unit right">%</span>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="tenure">Tenure</label>
+                            <div class="with-unit">
+                                <input class="form-input pad-right" type="number" id="tenure" min="1" placeholder="60" required style="padding-right:4.5rem;">
+                                <span class="unit right">months</span>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="startDate">Loan taken on</label>
+                            <input class="form-input" type="date" id="startDate" required>
+                            <span class="form-help">First EMI is due a month after this.</span>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="reset" class="btn btn-secondary">Clear</button>
+                        <button type="submit" class="btn">Make schedule</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="sheet">
+                <div class="sheet-head"><h2>Open a saved loan</h2></div>
+                <p class="small muted" style="margin-bottom:1rem;">Every loan gets a number when you save it. Enter it to see its schedule again.</p>
+                <form id="lookupForm" class="lookup">
+                    <div class="field">
+                        <label for="lookupId">Loan number</label>
+                        <input class="form-input fig" type="number" id="lookupId" min="1" placeholder="1" required>
+                    </div>
+                    <button type="submit" class="btn btn-secondary">Open</button>
+                </form>
+                <div class="small muted" style="margin-top:1.25rem;">How the EMI is worked out:<code class="formula">EMI = P × r × (1+r)<sup>n</sup> ÷ ((1+r)<sup>n</sup> − 1)</code>where <code>r</code> is the yearly rate ÷ 12 and <code>n</code> is the number of months. The last month is adjusted so the balance closes at exactly ₹0.00.</div>
+            </section>
+        </div>
+
+        <section class="sheet flush ledger hidden" id="scheduleSection" style="margin-top:1.5rem;">
+            <div class="sheet-head">
+                <h2 id="scheduleTitle">Repayment schedule</h2>
+                <p id="scheduleMeta"></p>
             </div>
-            <nav class="sidebar-nav">
-                <a href="dashboard.html">
-                    <span class="material-symbols-outlined">dashboard</span>
-                    <span>Dashboard</span>
-                </a>
-                <a href="loans.html" class="active">
-                    <span class="material-symbols-outlined">payments</span>
-                    <span>Loans & EMI</span>
-                </a>
-                <a href="expenses.html">
-                    <span class="material-symbols-outlined">receipt_long</span>
-                    <span>Expenses</span>
-                </a>
-                <a href="insurance.html">
-                    <span class="material-symbols-outlined">verified_user</span>
-                    <span>Insurance</span>
-                </a>
-                <a href="admin.html" class="admin-link" id="adminLink" style="display:none;">
-                    <span class="material-symbols-outlined">admin_panel_settings</span>
-                    <span>Admin Panel</span>
-                </a>
-            </nav>
-            <div class="sidebar-footer">
-                <div class="sidebar-user" onclick="logout()" style="cursor:pointer;" title="Click to logout">
-                    <div class="sidebar-user-avatar">
-                        <span class="material-symbols-outlined" style="font-size:1.25rem;">person</span>
-                    </div>
-                    <div style="flex:1; min-width:0;">
-                        <div class="sidebar-user-name" id="userName">User</div>
-                        <div class="sidebar-user-role">ValueTrack User</div>
-                    </div>
-                    <span class="material-symbols-outlined" style="font-size:1.125rem; color:var(--color-text-muted);">logout</span>
-                </div>
+            <dl class="summary-line" id="loanSummary" style="padding:1rem 1.5rem 0.5rem;"></dl>
+            <div class="table-wrap scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="num">No.</th>
+                            <th>Due on</th>
+                            <th class="num">EMI</th>
+                            <th class="num">Interest</th>
+                            <th class="num">Principal</th>
+                            <th class="num">Balance after</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scheduleBody"></tbody>
+                </table>
             </div>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Top Header -->
-            <header class="top-header">
-                <div class="flex items-center gap-4">
-                    <h2 class="top-header-title">Loans & EMI</h2>
-                </div>
-                <div class="top-header-actions">
-                </div>
-            </header>
-
-            <!-- Scrollable Content -->
-            <div class="content-area">
-                <div class="content-inner" style="max-width:900px; display:flex; flex-direction:column; gap:2rem;">
-
-                    <!-- Section Header -->
-                    <div class="flex items-center justify-between">
-                        <h3 style="font-size:1.125rem; font-weight:600;">Add New Loan</h3>
-                        <span class="badge badge-primary uppercase tracking-wider" style="font-size:0.625rem; font-weight:700;">Financial Planner</span>
-                    </div>
-
-                    <!-- Loan Form Card -->
-                    <div class="card-flat">
-                        <!-- Estimator Header -->
-                        <div class="estimator-card">
-                            <div class="estimator-icon">
-                                <span class="material-symbols-outlined">calculate</span>
-                                <span>EMI Estimator</span>
-                            </div>
-                            <div>
-                                <h4 style="font-size:1.125rem; font-weight:700;">Loan Details</h4>
-                                <p class="text-muted text-sm" style="margin-top:0.25rem;">Enter your loan parameters to calculate the amortized EMI schedule and total interest payable.</p>
-                            </div>
-                        </div>
-                        <!-- Form -->
-                        <div class="p-6">
-                            <div id="loanAlert"></div>
-                            <form id="loanForm">
-                                <div class="form-grid-4">
-                                    <div>
-                                        <label class="form-label" for="principal">Loan Amount</label>
-                                        <div class="input-icon-wrap">
-                                            <span class="icon-prefix-text" style="font-size:0.875rem;">₹</span>
-                                            <input class="form-input" type="number" id="principal" step="0.01" min="1"
-                                                placeholder="e.g. 100000" required>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="form-label" for="interestRate">Interest Rate (%)</label>
-                                        <div style="position:relative;">
-                                            <input class="form-input" type="number" id="interestRate" step="0.01" min="0"
-                                                placeholder="8.5" required style="padding-right:2rem;">
-                                            <span style="position:absolute; right:0.75rem; top:50%; transform:translateY(-50%); color:var(--color-text-muted); font-weight:500;">%</span>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="form-label" for="tenure">Tenure (Months)</label>
-                                        <input class="form-input" type="number" id="tenure" min="1" placeholder="24" required>
-                                    </div>
-                                    <div>
-                                        <label class="form-label" for="startDate">Start Date</label>
-                                        <input class="form-input" type="date" id="startDate" required>
-                                    </div>
-                                </div>
-                                <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
-                                    <button type="reset" class="btn btn-outline">Clear Form</button>
-                                    <button type="submit" class="btn btn-primary">
-                                        <span class="material-symbols-outlined" style="font-size:0.875rem;">auto_graph</span>
-                                        Calculate Schedule
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- Loan Summary (populated by JS) -->
-                    <div id="loanSummary" style="display:none;"></div>
-
-
-
-                    <!-- Amortization Schedule -->
-                    <div id="scheduleSection" class="hidden">
-                        <div class="flex items-center justify-between mb-4" style="flex-wrap:wrap; gap:1rem;">
-                            <div>
-                                <h3 style="font-size:1.125rem; font-weight:600;">Amortization Schedule</h3>
-                                <p class="text-xs text-muted">Monthly breakdown of principal and interest payments.</p>
-                            </div>
-                        </div>
-                        <div class="card-flat">
-                            <div class="table-wrap" style="max-height:500px; overflow-y:auto;">
-                                <table>
-                                    <thead style="position:sticky; top:0; z-index:5; background:var(--color-surface);">
-                                        <tr>
-                                            <th>Month</th>
-                                            <th>EMI Amount</th>
-                                            <th>Principal</th>
-                                            <th>Interest</th>
-                                            <th>Balance</th>
-                                            <th style="text-align:right;">Due Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="scheduleBody"></tbody>
-                                </table>
-                            </div>
-                            <div class="table-footer">
-                                <p class="text-xs text-muted" style="font-style:italic;">Estimated based on reducing balance method.</p>
-                            </div>
-                        </div>
-                        <div id="pagination" class="pagination"></div>
-                    </div>
-
-                </div>
-            </div>
-        </main>
-    </div>
-
+        </section>
+    </main>
 
     <script src="js/api.js"></script>
     <script src="js/loans.js"></script>

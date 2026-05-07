@@ -1,304 +1,195 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-IN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ValueTrack — Admin Panel</title>
-    <meta name="description" content="Admin panel for managing insurance plans, the IRDAI catalogue, scoring weights, and expense categories.">
+    <title>Admin – ValueTrack</title>
+    <link rel="icon" href="img/logo.svg">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div class="app-layout">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <div class="sidebar-brand-icon">
-                    <span class="material-symbols-outlined">admin_panel_settings</span>
+    <main class="page">
+        <div class="page-title">
+            <h1>Admin</h1>
+            <p>Plans you add or change here are used in the next insurance search straight away.</p>
+        </div>
+
+        <div class="admin-tabs" role="tablist">
+            <button class="admin-tab-btn active" data-tab="insurance" role="tab">Insurance plans</button>
+            <button class="admin-tab-btn" data-tab="irdai" role="tab">IRDAI list</button>
+            <button class="admin-tab-btn" data-tab="categories" role="tab">Expense categories</button>
+            <button class="admin-tab-btn" data-tab="users" role="tab">Users</button>
+        </div>
+
+        <!-- Insurance plans -->
+        <div id="tab-insurance" class="admin-tab-panel active">
+            <div id="insuranceAlert"></div>
+            <section class="sheet flush">
+                <div class="sheet-head">
+                    <h2>Plans</h2>
+                    <button class="btn btn-sm" id="btnAddPlan">Add a plan</button>
                 </div>
-                <div>
-                    <div class="sidebar-brand-title">ValueTrack</div>
-                    <div class="sidebar-brand-sub">Admin Panel</div>
+                <div class="table-wrap">
+                    <table id="insuranceTable">
+                        <thead>
+                            <tr>
+                                <th class="num">#</th>
+                                <th>Plan</th>
+                                <th>Type</th>
+                                <th>Ages</th>
+                                <th class="num">Premium / month</th>
+                                <th class="num">Cover</th>
+                                <th>Critical illness</th>
+                                <th>Maternity</th>
+                                <th>Accident</th>
+                                <th class="num">Co-pay</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="insuranceTableBody">
+                            <tr><td colspan="11" class="empty">Loading…</td></tr>
+                        </tbody>
+                    </table>
                 </div>
+            </section>
+        </div>
+
+        <!-- IRDAI list -->
+        <div id="tab-irdai" class="admin-tab-panel">
+            <div id="irdaiAlert"></div>
+            <div class="cols cols-2">
+                <section class="sheet">
+                    <div class="sheet-head"><h2>Getting the list from IRDAI</h2></div>
+                    <ol class="small" style="padding-left:1.2rem; display:flex; flex-direction:column; gap:0.45rem;">
+                        <li>Open <a href="https://irdai.gov.in/health-insurance-products" target="_blank" rel="noopener">irdai.gov.in/health-insurance-products</a> in your browser.</li>
+                        <li>Filter by year or insurer if you want, and show as many rows per page as it allows.</li>
+                        <li>Save the page with Ctrl+S ("Webpage, HTML only"), or select the rows in the table and copy them.</li>
+                        <li>Upload the file (a CSV works too), or paste the rows into the box, then press Import.</li>
+                    </ol>
+                    <p class="form-help" style="margin-top:0.9rem;">IRDAI's robots.txt doesn't allow bots, so ValueTrack never downloads the list itself. Importing again is safe. Products are matched on UIN and updated.</p>
+                </section>
+                <section class="sheet">
+                    <div class="sheet-head"><h2>Import</h2></div>
+                    <form id="irdaiImportForm">
+                        <div class="field">
+                            <label for="irdaiFile">Saved page or CSV</label>
+                            <input class="form-input" type="file" id="irdaiFile" accept=".html,.htm,.csv,.tsv,.txt">
+                        </div>
+                        <div class="field">
+                            <label for="irdaiText">or paste the copied rows</label>
+                            <textarea class="form-textarea" id="irdaiText" rows="5" placeholder="Name of the Insurer	UIN	Product Name	…"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn" id="irdaiImportBtn">Import</button>
+                        </div>
+                    </form>
+                </section>
             </div>
-            <nav class="sidebar-nav">
-                <a href="dashboard.html">
-                    <span class="material-symbols-outlined">dashboard</span>
-                    <span>Dashboard</span>
-                </a>
-                <a href="loans.html">
-                    <span class="material-symbols-outlined">payments</span>
-                    <span>Loans &amp; EMI</span>
-                </a>
-                <a href="expenses.html">
-                    <span class="material-symbols-outlined">receipt_long</span>
-                    <span>Expenses</span>
-                </a>
-                <a href="insurance.html">
-                    <span class="material-symbols-outlined">verified_user</span>
-                    <span>Insurance</span>
-                </a>
-                <div class="sidebar-divider"></div>
-                <a href="admin.html" class="active">
-                    <span class="material-symbols-outlined fill-icon">admin_panel_settings</span>
-                    <span>Admin Panel</span>
-                </a>
-            </nav>
-            <div class="sidebar-footer">
-                <div class="sidebar-user" onclick="logout()" style="cursor:pointer;" title="Click to logout">
-                    <div class="sidebar-user-avatar" style="background:var(--color-danger);">
-                        <span class="material-symbols-outlined" style="font-size:1.25rem;">shield_person</span>
-                    </div>
-                    <div style="flex:1; min-width:0;">
-                        <div class="sidebar-user-name" id="userName">Admin</div>
-                        <div class="sidebar-user-role" style="color:var(--color-warning);">Administrator</div>
-                    </div>
-                    <span class="material-symbols-outlined" style="font-size:1.125rem; color:var(--color-text-muted);">logout</span>
+
+            <section class="sheet flush" style="margin-top:1.5rem;">
+                <div class="sheet-head">
+                    <h2>Imported products</h2>
+                    <span class="small muted" id="irdaiCount">—</span>
                 </div>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; padding:0.9rem 1.5rem; border-bottom:1px solid var(--rule);">
+                    <input class="form-input" type="search" id="irdaiSearch" aria-label="Search" placeholder="Search by product, insurer or UIN" style="max-width:340px;">
+                    <select class="form-select" id="irdaiType" aria-label="Product type" style="width:auto;">
+                        <option value="">All types</option>
+                    </select>
+                </div>
+                <div class="table-wrap">
+                    <table id="irdaiTable">
+                        <thead>
+                            <tr>
+                                <th>UIN</th>
+                                <th>Product</th>
+                                <th>Insurer</th>
+                                <th>Type</th>
+                                <th>Approved</th>
+                                <th>Status</th>
+                                <th>Plan in ValueTrack</th>
+                            </tr>
+                        </thead>
+                        <tbody id="irdaiTableBody">
+                            <tr><td colspan="7" class="empty">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            <div class="pagination">
+                <button type="button" id="irdaiPrev">Previous</button>
+                <button type="button" id="irdaiNext">Next</button>
             </div>
-        </aside>
+        </div>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Top Header -->
-            <header class="top-header">
-                <div class="flex items-center gap-4">
-                    <h2 class="top-header-title">Admin Panel</h2>
-                    <span class="admin-badge">ADMIN</span>
+        <!-- Categories -->
+        <div id="tab-categories" class="admin-tab-panel">
+            <div id="categoriesAlert"></div>
+            <section class="sheet flush" style="max-width:640px;">
+                <div class="sheet-head">
+                    <h2>Expense categories</h2>
+                    <button class="btn btn-sm" id="btnAddCategory">Add a category</button>
                 </div>
-                <div class="top-header-actions">
-                    <a href="dashboard.html" class="btn btn-outline btn-sm">
-                        <span class="material-symbols-outlined" style="font-size:1rem;">arrow_back</span>
-                        Back to App
-                    </a>
+                <div class="table-wrap">
+                    <table id="categoriesTable">
+                        <thead>
+                            <tr>
+                                <th class="num">#</th>
+                                <th>Name</th>
+                                <th>Icon name</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="categoriesTableBody">
+                            <tr><td colspan="4" class="empty">Loading…</td></tr>
+                        </tbody>
+                    </table>
                 </div>
-            </header>
+            </section>
+        </div>
 
-            <!-- Scrollable Content -->
-            <div class="content-area">
-                <div class="content-inner" style="display:flex; flex-direction:column; gap:2rem;">
-
-                    <!-- Admin Tab Navigation -->
-                    <div class="admin-tabs">
-                        <button class="admin-tab-btn active" data-tab="insurance">
-                            <span class="material-symbols-outlined">shield</span>
-                            Insurance Plans
-                        </button>
-                        <button class="admin-tab-btn" data-tab="irdai">
-                            <span class="material-symbols-outlined">verified</span>
-                            IRDAI Catalogue
-                        </button>
-                        <button class="admin-tab-btn" data-tab="categories">
-                            <span class="material-symbols-outlined">category</span>
-                            Expense Categories
-                        </button>
-                        <button class="admin-tab-btn" data-tab="users">
-                            <span class="material-symbols-outlined">group</span>
-                            Users
-                        </button>
-                    </div>
-
-                    <!-- TAB 1: Insurance Management -->
-                    <div id="tab-insurance" class="admin-tab-panel active">
-                        <div class="flex items-center justify-between mb-6">
-                            <div>
-                                <h2>Insurance Plans</h2>
-                                <p class="text-sm text-muted mt-1">Manage insurance plans. Changes reflect immediately in recommendations.</p>
-                            </div>
-                            <button class="btn btn-primary" id="btnAddPlan">
-                                <span class="material-symbols-outlined" style="font-size:1.125rem;">add</span>
-                                Add Plan
-                            </button>
-                        </div>
-
-                        <div id="insuranceAlert"></div>
-
-                        <div class="card-flat">
-                            <div class="table-wrap">
-                                <table id="insuranceTable">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Plan Name</th>
-                                            <th>Type</th>
-                                            <th>Age</th>
-                                            <th style="text-align:right;">Premium/mo</th>
-                                            <th style="text-align:right;">Coverage</th>
-                                            <th>Critical</th>
-                                            <th>Maternity</th>
-                                            <th>Accident</th>
-                                            <th>Co-Pay</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="insuranceTableBody">
-                                        <tr><td colspan="11" class="text-center text-muted" style="padding:2rem;">Loading...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- TAB: IRDAI Catalogue -->
-                    <div id="tab-irdai" class="admin-tab-panel">
-                        <div class="mb-6">
-                            <h2>IRDAI Product Catalogue</h2>
-                            <p class="text-sm text-muted mt-1">Import IRDAI's public list of approved health insurance products, then link your plans to a real UIN. Users can then pick "IRDAI-registered plans only" on the Insurance page.</p>
-                        </div>
-
-                        <div id="irdaiAlert"></div>
-
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;" class="mb-6">
-                            <div class="card-flat" style="padding:1.25rem;">
-                                <h3 class="mb-4 flex items-center gap-2" style="font-size:1rem;">
-                                    <span class="material-symbols-outlined text-primary">help</span>
-                                    How to get the list
-                                </h3>
-                                <ol class="text-sm" style="padding-left:1.25rem; display:flex; flex-direction:column; gap:0.5rem; color:var(--color-text-secondary);">
-                                    <li>Open <a href="https://irdai.gov.in/health-insurance-products" target="_blank" rel="noopener">irdai.gov.in/health-insurance-products</a> in your browser.</li>
-                                    <li>Filter by financial year or insurer if you like, and show as many rows per page as it allows.</li>
-                                    <li>Either save the page (<strong>Ctrl+S</strong>, "Webpage, HTML only"), or select the table rows and copy them.</li>
-                                    <li>Upload the saved file (or a CSV), or paste the copied rows here, then click <strong>Import</strong>.</li>
-                                </ol>
-                                <p class="form-help" style="margin-top:0.75rem;">IRDAI's site doesn't allow bots, so ValueTrack never downloads it by itself. You bring the file, and it does the rest. Re-importing is safe: products are matched by UIN and updated.</p>
-                            </div>
-                            <form id="irdaiImportForm" class="card-flat" style="padding:1.25rem; display:flex; flex-direction:column; gap:1rem;">
-                                <div class="form-group" style="margin:0;">
-                                    <label class="form-label" for="irdaiFile">Saved page or CSV</label>
-                                    <input class="form-input" type="file" id="irdaiFile" accept=".html,.htm,.csv,.tsv,.txt">
-                                </div>
-                                <div class="form-group" style="margin:0;">
-                                    <label class="form-label" for="irdaiText">...or paste the copied table</label>
-                                    <textarea class="form-textarea" id="irdaiText" rows="5" placeholder="Archive / Non Archive, Financial Year, Name of the Insurer, UIN, Product Name, Date of Approval, ..."></textarea>
-                                </div>
-                                <button type="submit" class="btn btn-primary" id="irdaiImportBtn">
-                                    <span class="material-symbols-outlined" style="font-size:1.125rem;">upload</span>
-                                    Import
-                                </button>
-                            </form>
-                        </div>
-
-                        <div class="flex items-center justify-between gap-4 mb-4" style="flex-wrap:wrap;">
-                            <div class="flex items-center gap-4" style="flex-wrap:wrap;">
-                                <input class="form-input" type="search" id="irdaiSearch" placeholder="Search product, insurer or UIN" style="min-width:280px;">
-                                <select class="form-select" id="irdaiType" style="min-width:160px;">
-                                    <option value="">All types</option>
-                                </select>
-                            </div>
-                            <span class="text-sm text-muted" id="irdaiCount">-</span>
-                        </div>
-
-                        <div class="card-flat">
-                            <div class="table-wrap">
-                                <table id="irdaiTable">
-                                    <thead>
-                                        <tr>
-                                            <th>UIN</th>
-                                            <th>Product</th>
-                                            <th>Insurer</th>
-                                            <th>Type</th>
-                                            <th>Approved</th>
-                                            <th>Status</th>
-                                            <th>ValueTrack plan</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="irdaiTableBody">
-                                        <tr><td colspan="7" class="text-center text-muted" style="padding:2rem;">Loading...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="pagination" style="margin-top:1rem;">
-                            <button type="button" id="irdaiPrev">Previous</button>
-                            <button type="button" id="irdaiNext">Next</button>
-                        </div>
-                    </div>
-
-                    <!-- TAB 2: Expense Categories -->
-                    <div id="tab-categories" class="admin-tab-panel">
-                        <div class="flex items-center justify-between mb-6">
-                            <div>
-                                <h2>Expense Categories</h2>
-                                <p class="text-sm text-muted mt-1">Manage categories available for expense tracking.</p>
-                            </div>
-                            <button class="btn btn-primary" id="btnAddCategory">
-                                <span class="material-symbols-outlined" style="font-size:1.125rem;">add</span>
-                                Add Category
-                            </button>
-                        </div>
-
-                        <div id="categoriesAlert"></div>
-
-                        <div class="card-flat" style="max-width:640px;">
-                            <div class="table-wrap">
-                                <table id="categoriesTable">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Icon</th>
-                                            <th>Category Name</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="categoriesTableBody">
-                                        <tr><td colspan="4" class="text-center text-muted" style="padding:2rem;">Loading...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- TAB 3: Users (read-only) -->
-                    <div id="tab-users" class="admin-tab-panel">
-                        <div class="mb-6">
-                            <h2>User Accounts</h2>
-                            <p class="text-sm text-muted mt-1">Overview of all registered users.</p>
-                        </div>
-
-                        <div class="card-flat">
-                            <div class="table-wrap">
-                                <table id="usersTable">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Name</th>
-                                            <th>Email</th>
-                                            <th>Role</th>
-                                            <th>Registered</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="usersTableBody">
-                                        <tr><td colspan="5" class="text-center text-muted" style="padding:2rem;">Loading...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
+        <!-- Users -->
+        <div id="tab-users" class="admin-tab-panel">
+            <section class="sheet flush">
+                <div class="sheet-head"><h2>Users</h2><p>read only</p></div>
+                <div class="table-wrap">
+                    <table id="usersTable">
+                        <thead>
+                            <tr>
+                                <th class="num">#</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr><td colspan="5" class="empty">Loading…</td></tr>
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-        </main>
-    </div>
+            </section>
+        </div>
+    </main>
 
-    <!-- Modal: Insurance Plan Form -->
+    <!-- Plan form -->
     <div id="planModal" class="modal-overlay hidden">
-        <div class="modal-container">
+        <div class="modal-container" role="dialog" aria-labelledby="planModalTitle">
             <div class="modal-header">
-                <h3 id="planModalTitle">Add Insurance Plan</h3>
-                <button class="icon-btn" id="closePlanModal">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
+                <h3 id="planModalTitle">Add a plan</h3>
+                <button type="button" class="modal-close" id="closePlanModal" aria-label="Close">×</button>
             </div>
             <form id="planForm" class="modal-body">
                 <input type="hidden" id="planId">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label" for="planName">Plan Name</label>
-                        <input class="form-input" type="text" id="planName" required placeholder="e.g. HealthShield Basic">
+                <div class="fields fields-2">
+                    <div class="field">
+                        <label for="planName">Plan name</label>
+                        <input class="form-input" type="text" id="planName" required>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="planType">Plan Type</label>
+                    <div class="field">
+                        <label for="planType">Type</label>
                         <select class="form-select" id="planType" required>
-                            <option value="">Select Type</option>
+                            <option value="">Choose…</option>
                             <option value="Individual">Individual</option>
                             <option value="Family Floater">Family Floater</option>
                             <option value="Young Adult">Young Adult</option>
@@ -310,121 +201,95 @@
                             <option value="Comprehensive">Comprehensive</option>
                         </select>
                     </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label" for="planMinAge">Min Age</label>
+                    <div class="field">
+                        <label for="planMinAge">Youngest age</label>
                         <input class="form-input" type="number" id="planMinAge" required min="0" max="120" placeholder="18">
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="planMaxAge">Max Age</label>
+                    <div class="field">
+                        <label for="planMaxAge">Oldest age</label>
                         <input class="form-input" type="number" id="planMaxAge" required min="0" max="120" placeholder="65">
                     </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label" for="planPremium">Monthly Premium (₹)</label>
-                        <input class="form-input" type="number" id="planPremium" required min="0" step="0.01" placeholder="1500">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="planCoverage">Coverage Amount (₹)</label>
-                        <input class="form-input" type="number" id="planCoverage" required min="0" step="0.01" placeholder="500000">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label" for="planCoPay">Co-Pay (%)</label>
-                        <input class="form-input" type="number" id="planCoPay" min="0" max="100" placeholder="20">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="planUin">IRDAI UIN (optional)</label>
-                        <input class="form-input" type="text" id="planUin" placeholder="e.g. BAJHLIP23020V012223">
-                        <p class="form-help">Must exist in the IRDAI Catalogue tab.</p>
-                    </div>
-                </div>
-                <div style="display:flex; gap:2rem; flex-wrap:wrap; padding:0.5rem 0;">
-                    <div class="toggle-wrap">
-                        <div>
-                            <span style="font-size:0.875rem; font-weight:600;">Critical Illness</span><br>
-                            <span class="text-xs text-muted">Covers critical illness</span>
+                    <div class="field">
+                        <label for="planPremium">Premium per month</label>
+                        <div class="with-unit">
+                            <span class="unit left">₹</span>
+                            <input class="form-input" type="number" id="planPremium" required min="0" step="0.01" placeholder="900">
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="planCritical">
-                            <span class="toggle-slider"></span>
-                        </label>
                     </div>
-                    <div class="toggle-wrap">
-                        <div>
-                            <span style="font-size:0.875rem; font-weight:600;">Maternity</span><br>
-                            <span class="text-xs text-muted">Covers maternity</span>
+                    <div class="field">
+                        <label for="planCoverage">Cover amount</label>
+                        <div class="with-unit">
+                            <span class="unit left">₹</span>
+                            <input class="form-input" type="number" id="planCoverage" required min="0" step="0.01" placeholder="500000">
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="planMaternity">
-                            <span class="toggle-slider"></span>
-                        </label>
                     </div>
-                    <div class="toggle-wrap">
-                        <div>
-                            <span style="font-size:0.875rem; font-weight:600;">Accident</span><br>
-                            <span class="text-xs text-muted">Covers accidents</span>
+                    <div class="field">
+                        <label for="planCoPay">Co-pay</label>
+                        <div class="with-unit">
+                            <input class="form-input pad-right" type="number" id="planCoPay" min="0" max="100" placeholder="0">
+                            <span class="unit right">%</span>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="planAccident">
-                            <span class="toggle-slider"></span>
-                        </label>
+                    </div>
+                    <div class="field">
+                        <label for="planUin">IRDAI UIN (optional)</label>
+                        <input class="form-input fig" type="text" id="planUin" placeholder="BAJHLIP23020V012223">
+                        <span class="form-help">Has to be in the IRDAI list tab first.</span>
                     </div>
                 </div>
+                <fieldset style="margin-top:1.25rem;">
+                    <legend>Covers</legend>
+                    <div class="checks inline">
+                        <label class="check"><input type="checkbox" id="planCritical"><span>Critical illness</span></label>
+                        <label class="check"><input type="checkbox" id="planMaternity"><span>Maternity</span></label>
+                        <label class="check"><input type="checkbox" id="planAccident"><span>Accident</span></label>
+                    </div>
+                </fieldset>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" id="cancelPlanModal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="savePlanBtn">Save Plan</button>
+                    <button type="submit" class="btn" id="savePlanBtn">Save plan</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal: Category Form -->
+    <!-- Category form -->
     <div id="categoryModal" class="modal-overlay hidden">
-        <div class="modal-container" style="max-width:420px;">
+        <div class="modal-container" style="max-width:420px;" role="dialog" aria-labelledby="categoryModalTitle">
             <div class="modal-header">
-                <h3 id="categoryModalTitle">Add Category</h3>
-                <button class="icon-btn" id="closeCategoryModal">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
+                <h3 id="categoryModalTitle">Add a category</h3>
+                <button type="button" class="modal-close" id="closeCategoryModal" aria-label="Close">×</button>
             </div>
             <form id="categoryForm" class="modal-body">
                 <input type="hidden" id="categoryId">
-                <div class="form-group">
-                    <label class="form-label" for="categoryName">Category Name</label>
-                    <input class="form-input" type="text" id="categoryName" required placeholder="e.g. Groceries">
+                <div class="field">
+                    <label for="categoryName">Name</label>
+                    <input class="form-input" type="text" id="categoryName" required placeholder="Groceries">
                 </div>
-                <div class="form-group">
-                    <label class="form-label" for="categoryIcon">Material Icon Name</label>
-                    <input class="form-input" type="text" id="categoryIcon" placeholder="e.g. shopping_cart">
-                    <p class="form-help">Google Material Symbol name (optional)</p>
+                <div class="field">
+                    <label for="categoryIcon">Icon name (optional)</label>
+                    <input class="form-input" type="text" id="categoryIcon" placeholder="shopping_cart">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" id="cancelCategoryModal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="saveCategoryBtn">Save Category</button>
+                    <button type="submit" class="btn" id="saveCategoryBtn">Save</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Confirm Delete Dialog -->
+    <!-- Delete confirmation -->
     <div id="deleteModal" class="modal-overlay hidden">
-        <div class="modal-container" style="max-width:380px;">
+        <div class="modal-container" style="max-width:400px;" role="alertdialog" aria-labelledby="deleteTitle">
             <div class="modal-header">
-                <h3>Confirm Delete</h3>
-                <button class="icon-btn" id="closeDeleteModal">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
+                <h3 id="deleteTitle">Delete?</h3>
+                <button type="button" class="modal-close" id="closeDeleteModal" aria-label="Close">×</button>
             </div>
-            <div class="modal-body" style="padding:1.5rem;">
-                <p id="deleteMessage" style="color:var(--color-text-secondary);">Are you sure you want to delete this item? This action cannot be undone.</p>
-            </div>
-            <div class="modal-footer" style="padding:0 1.5rem 1.5rem;">
-                <button type="button" class="btn btn-secondary" id="cancelDeleteModal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            <div class="modal-body">
+                <p id="deleteMessage">This can't be undone.</p>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelDeleteModal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+                </div>
             </div>
         </div>
     </div>

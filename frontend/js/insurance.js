@@ -1,127 +1,88 @@
-/**
- * ValueTrack — Insurance Page Logic
- * Eligibility form + ranked top-5 results display.
- */
+// Insurance page: send the profile, show the ranked plans with their reasons.
+
+// The backend tags each reason with an icon name; turn that into ✓ / ✗ / ! / +
+const REASON_KIND = {
+    check_circle: 'yes', payments: 'yes', health_and_safety: 'yes', pregnant_woman: 'yes',
+    personal_injury: 'yes', verified: 'yes', error: 'no', warning: 'warn', info: 'extra'
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     const user = requireAuth();
     if (!user) return;
+    mountHeader('insurance');
 
-    const userNameEl = document.getElementById('userName');
-    if (userNameEl) userNameEl.textContent = user.name;
+    const $ = id => document.getElementById(id);
+    const form = $('insuranceForm');
+    const alertBox = $('insuranceAlert');
+    const list = $('resultsList');
 
-    // Show admin link if admin
-    if (user.role === 'admin') {
-        const adminLink = document.getElementById('adminLink');
-        if (adminLink) adminLink.style.display = '';
-    }
-
-    const insuranceForm = document.getElementById('insuranceForm');
-    const insuranceAlert = document.getElementById('insuranceAlert');
-    const resultsSection = document.getElementById('resultsSection');
-    const resultsList = document.getElementById('resultsList');
-
-    insuranceForm.addEventListener('submit', async (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const btn = insuranceForm.querySelector('button[type="submit"]');
+        const btn = form.querySelector('button[type="submit"]');
+        const age = parseInt($('age').value, 10);
+        const budget = parseFloat($('budget').value);
+        const source = $('planSource').value;
 
-        const age = parseInt(document.getElementById('age').value);
-        const budget = parseFloat(document.getElementById('budget').value);
-        const needsCriticalIllness = document.getElementById('needsCriticalIllness').checked;
-        const needsMaternity = document.getElementById('needsMaternity').checked;
-        const needsAccident = document.getElementById('needsAccident').checked;
-        const source = document.getElementById('planSource').value;
-
-        // Validation
-        if (!age || age < 1 || age > 120) {
-            showAlert(insuranceAlert, 'Age must be between 1 and 120.', 'danger');
-            return;
-        }
-        if (!budget || budget < 0) {
-            showAlert(insuranceAlert, 'Monthly budget must be a non-negative number.', 'danger');
-            return;
-        }
+        if (!(age >= 1 && age <= 120)) return showAlert(alertBox, 'Age has to be between 1 and 120.');
+        if (!(budget >= 0)) return showAlert(alertBox, "Budget can't be negative.");
+        alertBox.innerHTML = '';
 
         showLoading(btn);
         try {
-            const result = await InsuranceAPI.getRecommendation(user.user_id, age, budget, needsCriticalIllness, needsMaternity, needsAccident, source);
+            const result = await InsuranceAPI.getRecommendation(
+                user.user_id, age, budget,
+                $('needsCriticalIllness').checked, $('needsMaternity').checked, $('needsAccident').checked,
+                source
+            );
 
-            if (!result.top || result.top.length === 0) {
-                showAlert(insuranceAlert,
-                    result.reason || 'No eligible insurance plans found for your profile.',
-                    'info');
-                resultsSection.classList.add('hidden');
+            $('resultsCaption').textContent = source === 'irdai' ? 'IRDAI-registered plans only' : 'all plans';
+
+            if (!result.top || !result.top.length) {
+                $('resultsTitle').textContent = 'No plans fit';
+                list.innerHTML = `<p>${escapeHtml(explainEmpty(result.reason))}</p>
+                    <p class="muted small">Try a higher monthly budget, or untick one of the covers.</p>`;
                 return;
             }
 
-            showAlert(insuranceAlert,
-                `Found ${result.top.length} matching plans! (Request ID: ${result.request_id})`,
-                'success');
-
-            document.getElementById('resultsCaption').textContent = source === 'irdai'
-                ? 'Showing IRDAI-registered plans matched to you'
-                : 'Showing matched plans for you';
-            renderResults(result.top);
-            resultsSection.classList.remove('hidden');
-            resultsSection.style.display = '';
-            const emptyResults = document.getElementById('emptyResults');
-            if (emptyResults) emptyResults.style.display = 'none';
+            $('resultsTitle').textContent = result.top.length === 1 ? 'Best fit' : `Top ${result.top.length} fits`;
+            list.innerHTML = result.top.map(renderPlan).join('');
         } catch (error) {
-            showAlert(insuranceAlert, error.message, 'danger');
+            showAlert(alertBox, escapeHtml(error.message));
         } finally {
             hideLoading(btn);
         }
     });
-
-    function renderResults(plans) {
-        const rankColors = ['gold', 'silver', 'bronze', '', ''];
-
-        resultsList.innerHTML = plans.map((plan, idx) => `
-            <div class="rank-card" style="flex-direction: column; align-items: stretch; gap: 1rem;">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
-                    <div class="rank-number ${rankColors[idx]}">${plan.rank}</div>
-                    <div class="rank-info" style="flex:1;">
-                        <h4>${escapeHtml(plan.plan_name)} <span class="text-muted" style="font-weight: 400; font-size: 0.9em;">| ₹${plan.premium.toLocaleString()}/mo</span></h4>
-                        <p style="margin-bottom: 0.5rem;">${escapeHtml(plan.type)}${plan.irdai
-                            ? ` · <span class="text-muted">${escapeHtml(plan.irdai.insurer)}</span>`
-                            : ''}</p>
-                        
-                        <!-- Eligibility Criteria Columns (Requested by User) -->
-                        <div style="display:inline-flex; gap:1.5rem; background: var(--border-color); padding: 4px 12px; border-radius: 4px; font-size: 0.85rem; margin-top: 4px;">
-                            <span><strong>Eligibility:</strong> Age ${plan.min_age} - ${plan.max_age}</span>
-                            <span><strong>Co-Pay:</strong> ${plan.co_pay}%</span>
-                        </div>
-                    </div>
-                    <div class="rank-details" style="text-align: right;">
-                        <div class="score" style="font-size: 1.5rem; color: var(--primary);">${(plan.score * 100).toFixed(1)}<span style="font-size: 1rem;">%</span></div>
-                    </div>
-                </div>
-                <div style="background-color: var(--surface-hover); padding: 1rem; border-radius: 8px;">
-                    <div class="score-bar-container" style="margin-bottom: 0.5rem; height: 6px;">
-                        <div class="score-bar" style="width: ${(plan.score * 100).toFixed(0)}%"></div>
-                    </div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
-                        ${(plan.explanations || []).map(exp => {
-                            let badgeClass = 'primary';
-                            if (['check_circle', 'verified', 'health_and_safety', 'workspace_premium', 'pregnant_woman', 'personal_injury', 'payments'].includes(exp.icon)) badgeClass = 'success';
-                            if (['warning'].includes(exp.icon)) badgeClass = 'warning';
-                            if (['error'].includes(exp.icon)) badgeClass = 'danger';
-                            if (['info'].includes(exp.icon)) badgeClass = 'info';
-                            
-                            return `<span class="badge badge-${badgeClass}" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; font-weight: 500;">
-                                <span class="material-symbols-outlined" style="font-size: 16px;">${exp.icon}</span>
-                                ${escapeHtml(exp.text)}
-                            </span>`;
-                        }).join('')}
-                    </div>
-                    <div class="text-xs text-muted" style="margin-top: 0.8rem; display: flex; justify-content: space-between;">
-                        <span>Max Coverage: <strong>₹${plan.coverage.toLocaleString()}</strong></span>
-                        <span>${plan.irdai
-                            ? `IRDAI UIN: <strong>${escapeHtml(plan.irdai.uin)}</strong>${plan.irdai.approval_date ? ` · approved ${escapeHtml(plan.irdai.approval_date)}` : ''}`
-                            : `Type: ${escapeHtml(plan.type)}`}</span>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-    }
 });
+
+function explainEmpty(reason) {
+    if (!reason) return 'No plan matched your age and budget.';
+    if (reason === 'no eligible plans fit your criteria') return 'No plan matched your age and budget.';
+    if (reason === 'no policies in database') return 'There are no plans in the database yet.';
+    return reason;
+}
+
+function renderPlan(plan) {
+    const irdai = plan.irdai;
+    const reasons = (plan.explanations || []).map(r =>
+        `<li class="${REASON_KIND[r.icon] || 'extra'}">${escapeHtml(r.text)}</li>`).join('');
+
+    return `
+        <article class="plan">
+            <div class="plan-rank">${plan.rank}</div>
+            <div>
+                <h3>${escapeHtml(plan.plan_name)}${plan.rank === 1 ? '<span class="first-pick">best fit</span>' : ''}</h3>
+                <p class="sub">${escapeHtml(plan.type)}${irdai ? `, ${escapeHtml(irdai.insurer)}` : ''}</p>
+            </div>
+            <div class="plan-score">
+                <div class="seal" title="Match score out of 100"><span class="fig">${Math.round(plan.score * 100)}</span><small>of 100</small></div>
+            </div>
+            <div class="plan-terms">
+                <span>Premium <b>${formatINR(plan.premium, 0)}</b>/month</span>
+                <span>Cover <b>${formatINR(plan.coverage, 0)}</b></span>
+                <span>Ages <b>${plan.min_age}–${plan.max_age}</b></span>
+                <span>Co-pay <b>${plan.co_pay}%</b></span>
+                ${irdai ? `<span>UIN <b>${escapeHtml(irdai.uin)}</b>${irdai.approval_date ? `, approved ${formatDate(irdai.approval_date)}` : ''}</span>` : ''}
+            </div>
+            <ul class="reasons">${reasons}</ul>
+        </article>`;
+}

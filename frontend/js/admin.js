@@ -1,7 +1,4 @@
-/**
- * ValueTrack — Admin Panel Logic
- * Insurance CRUD, IRDAI catalogue import, Expense Categories, Users list.
- */
+// Admin page: insurance plans, the IRDAI list, expense categories, users.
 
 document.addEventListener('DOMContentLoaded', () => {
     const user = requireAuth();
@@ -13,8 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const userNameEl = document.getElementById('userName');
-    if (userNameEl) userNameEl.textContent = user.name;
+    mountHeader('admin');
 
     // ---- Tab navigation ----
     const tabBtns = document.querySelectorAll('.admin-tab-btn');
@@ -42,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let plansCache = [];
 
     function yesNo(val) {
-        return val ? '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-muted">No</span>';
+        return val ? 'yes' : '<span class="muted">no</span>';
     }
 
     async function loadInsuranceWithCache() {
@@ -50,35 +46,31 @@ document.addEventListener('DOMContentLoaded', () => {
             plansCache = await AdminAPI.getInsurance(user.user_id);
             renderInsuranceTable(plansCache);
         } catch (error) {
-            showAlert(insuranceAlert, error.message, 'danger');
+            showAlert(insuranceAlert, escapeHtml(error.message), 'danger');
         }
     }
 
     function renderInsuranceTable(plans) {
         if (!plans.length) {
-            insuranceTableBody.innerHTML = '<tr><td colspan="11" class="text-center text-muted" style="padding:2rem;">No insurance plans found.</td></tr>';
+            insuranceTableBody.innerHTML = '<tr><td colspan="11" class="empty">No plans yet.</td></tr>';
             return;
         }
         insuranceTableBody.innerHTML = plans.map(p => `
             <tr>
-                <td>${p.insurance_id}</td>
-                <td><strong>${escapeHtml(p.plan_name)}</strong>${p.irdai_uin ? `<br><span class="badge badge-info" title="IRDAI UIN" style="margin-top:4px;">${escapeHtml(p.irdai_uin)}</span>` : ''}</td>
-                <td>${p.plan_type}</td>
-                <td>${p.min_age}–${p.max_age}</td>
-                <td style="text-align:right;">₹${Number(p.monthly_premium).toLocaleString()}</td>
-                <td style="text-align:right;">₹${Number(p.coverage_amount).toLocaleString()}</td>
+                <td class="num">${p.insurance_id}</td>
+                <td><strong>${escapeHtml(p.plan_name)}</strong>${p.irdai_uin ? `<br><span class="tiny muted fig">UIN ${escapeHtml(p.irdai_uin)}</span>` : ''}</td>
+                <td>${escapeHtml(p.plan_type)}</td>
+                <td class="fig">${p.min_age}–${p.max_age}</td>
+                <td class="num">${formatINR(p.monthly_premium, 0)}</td>
+                <td class="num">${formatINR(p.coverage_amount, 0)}</td>
                 <td>${yesNo(p.has_critical_illness)}</td>
                 <td>${yesNo(p.has_maternity)}</td>
                 <td>${yesNo(p.has_accident)}</td>
-                <td>${p.co_pay_percentage}%</td>
+                <td class="num">${p.co_pay_percentage}%</td>
                 <td>
-                    <div class="flex gap-1">
-                        <button class="icon-btn" title="Edit" onclick="editPlan(${p.insurance_id})">
-                            <span class="material-symbols-outlined" style="font-size:1rem;">edit</span>
-                        </button>
-                        <button class="icon-btn" title="Delete" onclick="deletePlan(${p.insurance_id}, '${p.plan_name.replace(/'/g, "\\'")}')">
-                            <span class="material-symbols-outlined" style="font-size:1rem; color:var(--color-danger);">delete</span>
-                        </button>
+                    <div class="row-actions">
+                        <button class="link-btn" onclick="editPlan(${p.insurance_id})">Edit</button>
+                        <button class="link-btn danger" onclick="deletePlan(${p.insurance_id})">Delete</button>
                     </div>
                 </td>
             </tr>
@@ -87,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Open plan modal (add)
     document.getElementById('btnAddPlan').addEventListener('click', () => {
-        planModalTitle.textContent = 'Add Insurance Plan';
+        planModalTitle.textContent = 'Add a plan';
         planForm.reset();
         document.getElementById('planId').value = '';
         openModal(planModal);
@@ -102,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const plan = plansCache.find(p => p.insurance_id === planId);
         if (!plan) return;
 
-        planModalTitle.textContent = 'Edit Insurance Plan';
+        planModalTitle.textContent = 'Edit plan';
         document.getElementById('planId').value = plan.insurance_id;
         document.getElementById('planName').value = plan.plan_name;
         document.getElementById('planType').value = plan.plan_type;
@@ -123,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const product = irdaiCache.find(p => p.uin === uin);
         if (!product) return;
 
-        planModalTitle.textContent = 'Create Plan from IRDAI Product';
+        planModalTitle.textContent = 'New plan for an IRDAI product';
         planForm.reset();
         document.getElementById('planId').value = '';
         document.getElementById('planName').value = product.product_name;
@@ -160,30 +152,32 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             if (planId) {
                 await AdminAPI.updateInsurance(planId, data, user.user_id);
-                showAlert(insuranceAlert, 'Plan updated successfully!', 'success');
+                showAlert(insuranceAlert, 'Plan saved.', 'success');
             } else {
                 await AdminAPI.createInsurance(data, user.user_id);
-                showAlert(insuranceAlert, 'Plan created successfully!', 'success');
+                showAlert(insuranceAlert, 'Plan added.', 'success');
             }
             closeModal(planModal);
             await loadInsuranceWithCache();
             if (data.irdai_uin) await loadIrdai();
         } catch (error) {
-            showAlert(insuranceAlert, error.message, 'danger');
+            showAlert(insuranceAlert, escapeHtml(error.message), 'danger');
         } finally {
             hideLoading(btn);
         }
     });
 
     // Delete plan
-    window.deletePlan = function(planId, planName) {
-        showDeleteConfirm(`Are you sure you want to delete "${planName}"? This will also remove it from future recommendations.`, async () => {
+    window.deletePlan = function(planId) {
+        const plan = plansCache.find(p => p.insurance_id === planId);
+        const planName = plan ? plan.plan_name : `plan #${planId}`;
+        showDeleteConfirm(`Delete "${planName}"? It won't show up in recommendations any more, and this can't be undone.`, async () => {
             try {
                 await AdminAPI.deleteInsurance(planId, user.user_id);
-                showAlert(insuranceAlert, 'Plan deleted successfully!', 'success');
+                showAlert(insuranceAlert, 'Plan deleted.', 'success');
                 await loadInsuranceWithCache();
             } catch (error) {
-                showAlert(insuranceAlert, error.message, 'danger');
+                showAlert(insuranceAlert, escapeHtml(error.message), 'danger');
             }
         });
     };
@@ -222,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             renderIrdai();
         } catch (error) {
-            irdaiTableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger" style="padding:2rem;">${escapeHtml(error.message)}</td></tr>`;
+            irdaiTableBody.innerHTML = `<tr><td colspan="7" class="empty">${escapeHtml(error.message)}</td></tr>`;
         }
     }
 
@@ -234,29 +228,27 @@ document.addEventListener('DOMContentLoaded', () => {
         irdaiNext.disabled = to >= irdaiTotal;
 
         if (!irdaiCache.length) {
-            irdaiTableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding:2rem;">${
+            irdaiTableBody.innerHTML = `<tr><td colspan="7" class="empty">${
                 irdaiSearch.value || irdaiType.value
                     ? 'No products match your search.'
-                    : 'No IRDAI products yet. Import the list above to get started.'
+                    : 'Nothing imported yet. Use the Import box above.'
             }</td></tr>`;
             return;
         }
 
         irdaiTableBody.innerHTML = irdaiCache.map(p => `
             <tr>
-                <td><code style="font-size:0.8rem;">${escapeHtml(p.uin)}</code></td>
+                <td class="fig tiny">${escapeHtml(p.uin)}</td>
                 <td><strong>${escapeHtml(p.product_name)}</strong></td>
                 <td class="text-sm">${escapeHtml(p.insurer_name)}</td>
                 <td>${escapeHtml(p.product_type || '—')}</td>
-                <td class="text-muted" style="white-space:nowrap;">${p.approval_date ? p.approval_date.split('-').reverse().join('-') : '—'}</td>
+                <td class="nowrap">${formatDate(p.approval_date)}</td>
                 <td>${p.is_archived
-                    ? '<span class="badge badge-neutral">Archived</span>'
-                    : '<span class="badge badge-success">Active</span>'}</td>
+                    ? '<span class="tag">archived</span>'
+                    : '<span class="tag green">current</span>'}</td>
                 <td>${p.linked_plan_ids.length
-                    ? p.linked_plan_ids.map(id => `<span class="badge badge-primary">Plan #${id}</span>`).join(' ')
-                    : `<button class="btn btn-outline btn-sm" onclick="createPlanFromIrdai('${escapeHtml(p.uin)}')">
-                           <span class="material-symbols-outlined" style="font-size:1rem;">add</span> Create plan
-                       </button>`}</td>
+                    ? p.linked_plan_ids.map(id => `plan #${id}`).join(', ')
+                    : `<button class="link-btn" onclick="createPlanFromIrdai('${escapeHtml(p.uin)}')">Create plan</button>`}</td>
             </tr>
         `).join('');
     }
@@ -270,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = textInput.value.trim();
 
         if (!file && !text) {
-            showAlert(irdaiAlert, 'Choose a saved IRDAI page / CSV, or paste the copied table.', 'danger');
+            showAlert(irdaiAlert, 'Choose a saved IRDAI page or CSV, or paste the copied rows.', 'danger');
             return;
         }
 
@@ -281,9 +273,9 @@ document.addEventListener('DOMContentLoaded', () => {
                       (summary.skipped ? `, ${summary.skipped} skipped` : '') +
                       `. Catalogue now has ${summary.total_in_catalogue} products.`;
             if (summary.errors.length) {
-                msg += '<br><span class="text-xs">' + summary.errors.map(escapeHtml).join('<br>') + '</span>';
+                msg += '<br><span class="tiny">' + summary.errors.map(escapeHtml).join('<br>') + '</span>';
             }
-            showAlert(irdaiAlert, msg, summary.skipped ? 'info' : 'success');
+            showAlert(irdaiAlert, msg, summary.skipped ? 'warning' : 'success');
             fileInput.value = '';
             textInput.value = '';
             irdaiOffset = 0;
@@ -318,33 +310,29 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             categoriesCache = await AdminAPI.getCategories(user.user_id);
             if (!categoriesCache.length) {
-                categoriesTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted" style="padding:2rem;">No categories found.</td></tr>';
+                categoriesTableBody.innerHTML = '<tr><td colspan="4" class="empty">No categories yet.</td></tr>';
                 return;
             }
             categoriesTableBody.innerHTML = categoriesCache.map(c => `
                 <tr>
-                    <td>${c.category_id}</td>
-                    <td><span class="material-symbols-outlined" style="font-size:1.25rem; color:var(--color-primary);">${c.icon || 'category'}</span></td>
-                    <td><strong>${c.category_name}</strong></td>
+                    <td class="num">${c.category_id}</td>
+                    <td><strong>${escapeHtml(c.category_name)}</strong></td>
+                    <td class="fig tiny muted">${escapeHtml(c.icon || '')}</td>
                     <td>
-                        <div class="flex gap-1">
-                            <button class="icon-btn" title="Edit" onclick="editCategory(${c.category_id})">
-                                <span class="material-symbols-outlined" style="font-size:1rem;">edit</span>
-                            </button>
-                            <button class="icon-btn" title="Delete" onclick="deleteCategory(${c.category_id}, '${c.category_name.replace(/'/g, "\\'")}')">
-                                <span class="material-symbols-outlined" style="font-size:1rem; color:var(--color-danger);">delete</span>
-                            </button>
+                        <div class="row-actions">
+                            <button class="link-btn" onclick="editCategory(${c.category_id})">Edit</button>
+                            <button class="link-btn danger" onclick="deleteCategory(${c.category_id})">Delete</button>
                         </div>
                     </td>
                 </tr>
             `).join('');
         } catch (error) {
-            showAlert(categoriesAlert, error.message, 'danger');
+            showAlert(categoriesAlert, escapeHtml(error.message), 'danger');
         }
     }
 
     document.getElementById('btnAddCategory').addEventListener('click', () => {
-        categoryModalTitle.textContent = 'Add Category';
+        categoryModalTitle.textContent = 'Add a category';
         categoryForm.reset();
         document.getElementById('categoryId').value = '';
         openModal(categoryModal);
@@ -357,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cat = categoriesCache.find(c => c.category_id === catId);
         if (!cat) return;
 
-        categoryModalTitle.textContent = 'Edit Category';
+        categoryModalTitle.textContent = 'Edit category';
         document.getElementById('categoryId').value = cat.category_id;
         document.getElementById('categoryName').value = cat.category_name;
         document.getElementById('categoryIcon').value = cat.icon || '';
@@ -379,28 +367,30 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             if (catId) {
                 await AdminAPI.updateCategory(catId, data, user.user_id);
-                showAlert(categoriesAlert, 'Category updated!', 'success');
+                showAlert(categoriesAlert, 'Category saved.', 'success');
             } else {
                 await AdminAPI.createCategory(data, user.user_id);
-                showAlert(categoriesAlert, 'Category created!', 'success');
+                showAlert(categoriesAlert, 'Category added.', 'success');
             }
             closeModal(categoryModal);
             await loadCategories();
         } catch (error) {
-            showAlert(categoriesAlert, error.message, 'danger');
+            showAlert(categoriesAlert, escapeHtml(error.message), 'danger');
         } finally {
             hideLoading(btn);
         }
     });
 
-    window.deleteCategory = function(catId, catName) {
-        showDeleteConfirm(`Are you sure you want to delete the "${catName}" category?`, async () => {
+    window.deleteCategory = function(catId) {
+        const cat = categoriesCache.find(c => c.category_id === catId);
+        const catName = cat ? cat.category_name : `category #${catId}`;
+        showDeleteConfirm(`Delete the "${catName}" category?`, async () => {
             try {
                 await AdminAPI.deleteCategory(catId, user.user_id);
-                showAlert(categoriesAlert, 'Category deleted!', 'success');
+                showAlert(categoriesAlert, 'Category deleted.', 'success');
                 await loadCategories();
             } catch (error) {
-                showAlert(categoriesAlert, error.message, 'danger');
+                showAlert(categoriesAlert, escapeHtml(error.message), 'danger');
             }
         });
     };
@@ -414,20 +404,20 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const users = await AdminAPI.getUsers(user.user_id);
             if (!users.length) {
-                usersTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted" style="padding:2rem;">No users found.</td></tr>';
+                usersTableBody.innerHTML = '<tr><td colspan="5" class="empty">No users yet.</td></tr>';
                 return;
             }
             usersTableBody.innerHTML = users.map(u => `
                 <tr>
-                    <td>${u.user_id}</td>
-                    <td><strong>${u.name}</strong></td>
-                    <td>${u.email}</td>
-                    <td>${u.role === 'admin' ? '<span class="badge badge-warning">Admin</span>' : '<span class="badge badge-muted">User</span>'}</td>
-                    <td class="text-muted">${u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
+                    <td class="num">${u.user_id}</td>
+                    <td>${escapeHtml(u.name)}</td>
+                    <td>${escapeHtml(u.email)}</td>
+                    <td>${u.role === 'admin' ? '<span class="tag blue">admin</span>' : 'user'}</td>
+                    <td class="nowrap">${formatDate(u.created_at)}</td>
                 </tr>
             `).join('');
         } catch (error) {
-            usersTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger" style="padding:2rem;">${error.message}</td></tr>`;
+            usersTableBody.innerHTML = `<tr><td colspan="5" class="empty">${escapeHtml(error.message)}</td></tr>`;
         }
     }
 
